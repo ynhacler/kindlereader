@@ -4,40 +4,63 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
     <title>{{ user['userName'] }}'s Google reader</title>
     <style type="text/css">
-    body{
-        font-size: 1.1em;
-        margin:0 5px;
+    body {
+    margin-top:24px;
+    margin-left:48px;
+    margin-right:48px;
+    margin-bottom:24px;
+    line-height:150%;
+    font-size:1em;
+    font-family: "微软雅黑","宋体";
     }
-    h1,h2 {
-        font-size: 1.2em;
-        font-weight: bold;
-        margin:0;
-    }
-    a {
-        color: inherit;
-        text-decoration: inherit;
-        cursor: default
-    }
-    a[href] {
-        color: blue;
-        text-decoration: underline;
-        cursor: pointer
-    }
+
     p{
-        text-indent:1.5em;
-        line-height:1.3em;
-        margin-top:0;
-        margin-bottom:0;
+    font-family:"微软雅黑","宋体";
+    font-size:1em;
+    line-height:200%;
+    margin-bottom:24px;
+    text-indent: 2em;
     }
+
+    h2{
+    margin-top:24px;
+    margin-bottom:24px;
+    text-align:center;
+    font-weight:bold;
+    }
+    a{
+    text-decoration:none;
+    }
+
+    strong{
+    font-weight:bold;
+    }
+    
     .italic {
         font-style: italic
     }
+
+    .book_title{
+    margin-top:64px;
+    margin-bottom:24px;
+    text-align:center;
+    font-weight:bold;
+    letter-spacing:4px;
+    }
+
+    .book_author{
+    text-align:center;
+    font-weight:normal;
+    }
+
+    .book_cover{
+    text-align:center;
+    }
     h1#title{
-           font-size:4em;
-           font-weight:bold;
-       }
+       font-size:4em;
+       font-weight:bold;
+    }
     .do_article_title{
-        line-height:1.5em;
         page-break-before: always;
     }
     #cover{
@@ -60,7 +83,7 @@
     </guide>
 </head>
 <body>
-    <div id="cover">
+    <div class="book_cover">
         <h1 id="title">{{ user['userName'] }}'s google reader</h1>
         <a href="#content">Go straight to first item</a><br />
         {{ (datetime.datetime.utcnow()+datetime.timedelta(hours=TIMEZONE)).strftime("%m/%d %H:%M") }}<br />

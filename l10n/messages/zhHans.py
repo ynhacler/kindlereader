@@ -1,6 +1,5 @@
 # coding=utf-8
 
-# Messages on top bar
 setting = '设置'
 logs    = "投递日志"
 qna     = "帮助"

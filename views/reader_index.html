@@ -9,7 +9,7 @@
 {% if categories %}
 {% for c in categories %}
 {% if c.id != 'uncategorized' %}
-<a href="/reader/label/{{ url_escape(c.id) }}"><div style='background-color:#{% if index%2 %}DDD;{% else %}FFF{% end %};'><div class='{% if c.unread > 0 %}menubar{% else %}menubarRead{% end %}'>{% if kindle == 3 %}<font class='hotkey'><sup>{ <u>{{ hotkeys[index] }}</u> }</sup></font>{% end %}{{ c.label }}{% if c.unread > 0 %}({{c.unread}}){% end %}</div></div></a>
+<a href="/reader/label/{{ url_escape(c.id) }}"><div style='background-color:#{% if index%2 %}DDD;{% else %}FFF{% end %};'><div class='{% if c.unread > 0 %}menubar{% else %}menubarRead{% end %}'>{% if kindle == 3 and index < 26 %}<font class='hotkey'><sup>{ <u>{{ hotkeys[index] }}</u> }</sup></font>{% end %}{{ c.label }}{% if c.unread > 0 %}({{c.unread}}){% end %}</div></div></a>
 {% set index += 1%}
 {% end %}
 {% end %}
@@ -17,7 +17,7 @@
 
 {% if feeds %}
 {% for f in feeds %}
-<a href="/reader/view/{{ url_escape(f.id) }}"><div style='background-color:#{% if index%2 %}DDD;{% else %}FFF{% end %};'><div class='{% if f.unread > 0 %}menubar{% else %}menubarRead{% end %}'>{% if kindle == 3 %}<font class='hotkey'><sup>{ <u>{{ hotkeys[index] }}</u> }</sup></font>{% end %}{{ f.title }}{% if f.unread > 0 %}({{f.unread}}){% end %}</div></div></a>
+<a href="/reader/view/{{ url_escape(f.id) }}"><div style='background-color:#{% if index%2 %}DDD;{% else %}FFF{% end %};'><div class='{% if f.unread > 0 %}menubar{% else %}menubarRead{% end %}'>{% if kindle == 3 and index < 26 %}<font class='hotkey'><sup>{ <u>{{ hotkeys[index] }}</u> }</sup></font>{% end %}{{ f.title }}{% if f.unread > 0 %}({{f.unread}}){% end %}</div></div></a>
 {% set index += 1%}
 {% end %}
 {% end %}

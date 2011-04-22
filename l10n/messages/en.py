@@ -1,6 +1,5 @@
 # coding=utf-8
 
-# Messages on top bar
 setting = 'Setting'
 logs    = "Log"
 qna     = "Q&A"

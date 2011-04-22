@@ -592,6 +592,10 @@ class Post_V1Handler(BaseHandler):
                     user_token = gr_user.user_token
             
         if user_token and url and title and content:
+            
+            
+            # cache_id = 
+            
             taskqueue.add(url='/post_worker',
                           queue_name = new_queue_name("testqueue"),
                           method = 'POST',
