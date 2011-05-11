@@ -11,7 +11,7 @@ import re
 import zlib, base64
 
 from cgi import parse_qsl
-from urllib import unquote, quote_plus
+# from urllib import unquote_plus, quote_plus
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
@@ -25,6 +25,7 @@ from google.appengine.api import urlfetch
 from lib.libgreader import *
 from lib.tornado import template
 from lib.tornado import ui_module
+from lib.tornado import escape
 from lib.BeautifulSoup import BeautifulSoup
 import lib.oauth2 as oauth
 from lib.cookies import Cookies
@@ -245,7 +246,7 @@ class BaseHandler(webapp.RequestHandler):
         if not url:
             return False
             
-        url = "http://www.instapaper.com/m?u=%s" % quote_plus(url)
+        url = "http://www.instapaper.com/m?u=%s" % escape.url_unescape(url)
         result = urlfetch.fetch(url)
         if result.status_code == 200:
             
@@ -940,7 +941,7 @@ class WorkerHandler(BaseHandler):
                 else:
                     logging.debug("no update.")
                 
-                if feed_idx > 30 or updated_items > 1000:
+                if feed_idx >= 30 or updated_items >= 1000:
                     break
                 
             except Exception, e:
@@ -1001,7 +1002,7 @@ class WorkerHandler(BaseHandler):
             if html_data:
                 attachments.append(("Read later(%s).html" % self.local_time("%m-%d %Hh%Mm"), html_data))
                 
-            mail.send_mail(sender = mail_sender,
+            mail.send_mail(sender = "Spider Man <%s>" % mail_sender,
                           to = to,
                           subject = "Convert",
                           body = "deliver from http://reader.dogear.mobi",
@@ -1094,7 +1095,7 @@ class ReaderHandler(BaseHandler):
     def get_items(self, fid, continuation="", from_cache=True):
         """docstring for get_items"""
         
-        id = unquote(fid).decode('utf-8')
+        id = escape.url_unescape(fid)
         if from_cache:
             feed_data = self.cache_items('get', self.reader.userId, fid, continuation)
         else:
@@ -1119,11 +1120,11 @@ class ReaderHandler(BaseHandler):
 
             feed_data = self.reader.getFeedContent(parent, excludeRead, number=20, continuation=continuation)
             
-        # elif id.statrwith('splice'):
-        #     
-        #     parent = SpliceFeed(self.reader, u"推荐的条目")
-        #     overTime = "%.0f" % time.mktime((datetime.datetime.utcnow() - datetime.timedelta(days=1)).timetuple())
-        #     feed_data = reader.getSpliceContent(True, number=50, overTime=overTime)
+        elif id.startswith('recommended'):
+            
+            parent = SpliceFeed(self.reader, u"推荐的条目")
+            overTime = "%.0f" % time.mktime((datetime.datetime.utcnow() - datetime.timedelta(days=1)).timetuple())
+            feed_data = self.reader.getSpliceContent(True, number=50, overTime=overTime)
         else:
             parent = self.reader.getCategory(id)
             parent.isFeed = False
@@ -1138,7 +1139,7 @@ class ReaderHandler(BaseHandler):
     def cache_items(self, action, userId, id, c=None, items=None):
         """docstring for cache"""
         
-        cache_id = "u%sf%sc%s" % (userId, quote_plus(id), c)
+        cache_id = "u%sf%sc%s" % (userId, escape.url_escape(id), c)
         cache_id = hashlib.md5(cache_id).hexdigest()
         
         if action == 'set':
@@ -1219,8 +1220,7 @@ class ReaderLabelHandler(ReaderHandler):
     def get(self, label):
         """docstring for get"""
         self.init()
-
-        label = unquote(label).decode('utf-8')
+        label = escape.url_unescape(label)
         category = self.reader.getCategory(label)
         feeds = category.getFeeds()
 
@@ -1243,7 +1243,8 @@ class ReaderViewHandler(ReaderHandler):
         if not self.init():
             self.redirect("/oauth")
             return
-
+            
+        fid = escape.url_unescape(fid)
         parent, feed_data = self.get_items(fid, continuation, False)
         
         item_idx = 1

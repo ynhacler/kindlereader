@@ -39,6 +39,12 @@ def urlquote(string):
     """Encode a string to utf-8 and encode it for urllib"""
     
     return urllib.quote(string.encode("utf-8"))
+    
+def toUnicode(obj, encoding='utf-8'):
+    if isinstance(obj, basestring):
+        if not isinstance(obj, unicode):
+            obj = unicode(obj, encoding)
+    return obj
 
 class ItemsContainer(object):
     """
@@ -238,11 +244,11 @@ class BaseFeed(ItemsContainer):
         
 class SpliceFeed(BaseFeed):
     """
-    Class for representing specials feeds (starred, shared, friends...)
+    Class for representing recommended items
     """
     def __init__(self, googleReader, title):
         """
-        type is one of GoogleReader.SPECIAL_FEEDS
+        type is one of GoogleReader.Splice_FEEDS
         """
         super(SpliceFeed, self).__init__(
             googleReader,
@@ -733,6 +739,13 @@ class GoogleReader(object):
     def getUrlContent(self, url, excludeRead=False, continuation=None, number=None):
         
         pass
+    
+    def getLabelContent(self, label, excludeRead=False, continuation=None, number=None, overTime=None):
+        """docstring for getLabelContent"""
+        
+        fetchUrl = self.CONTENT_BASE_URL + urlquote("user/%s/label/%s" % (self.userId, label))
+        
+        return self._getFeedContent(fetchUrl, excludeRead, continuation, number, overTime)
         
     def removeItemTag(self, item, tag):
         return self.httpPost(GoogleReader.EDIT_TAG_URL, {'i': item.id, 'r': tag, 'ac': 'edit-tags', 'T':self.token })
@@ -764,7 +777,7 @@ class GoogleReader(object):
         """
         Wrapper around AuthenticationMethod get()
         """
-        return self.auth.get(url, parameters)
+        return toUnicode(self.auth.get(url, parameters))
 
     def httpPost(self, url, post_parameters=None, url_parameters=None):
         """
