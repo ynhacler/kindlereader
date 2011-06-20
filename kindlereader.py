@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 main.py
-Created by Jerry<lxb429@gmail.com> on 2010-11-08.
+Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 """
 
-__author__  = "Jerry<lxb429@gmail.com>"
-__version__ = "0.3"
+__author__  = "Jiedan<lxb429@gmail.com>"
+__version__ = "0.3.2"
 
 import sys
 import os
@@ -15,6 +15,7 @@ import hashlib
 import re
 import uuid
 import string
+import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -25,10 +26,13 @@ import ConfigParser
 import getpass
 import subprocess
 
-from lib.libgreader import *
-from lib.tornado import template
-from lib.tornado import escape
-from lib.BeautifulSoup import BeautifulSoup
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+
+from libgreader import *
+from tornado import template
+from tornado import escape
+from BeautifulSoup import BeautifulSoup
 
 import socket, urllib2, urllib
 socket.setdefaulttimeout(20)
@@ -174,123 +178,6 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
 </html>
 """
 
-TEMPLATES['book.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html>
-<head>
-<title>{{ user['userName'] }}'s google reader</title>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
-<style type="text/css">
-body{
-    margin:5px;
-    font-size: 1.2em;
-}
-</style>
-<guide>
-    <reference type="start" title="start" href="#content"></reference>
-    <reference type="toc" title="toc" href="#toc"></reference>
-    <reference type="text" title="cover" href="#cover"></reference>
-</guide>
-</head>
-<body>
-  <div id="cover">
-    <h1>{{ user['userName'] }}'s Google reader</h1>
-    <ul>
-        <li><a href="#content">Go straight to first item</a></li>
-    </ul>
-    <p>Date:{{ datetime.datetime.now().strftime("%m/%d %H:%M") }}</p>
-  </div>
-  <mbp:pagebreak></mbp:pagebreak>
-
-  <div id="toc">
-    <div id="feeds">
-        {% set feed_count = 0 %}
-        <h2>Feeds:</h2>
-        <ol>
-            {% for feed in feeds %}
-            {% if feed.item_count > 0 %}
-            {% set feed_count = feed_count + 1 %}
-            <li>
-                <a href="#feed-{{ feed.idx }}">{{ feed.title }}</a>
-                <br> 
-                {{ feed.item_count }} items
-            </li>
-            {% end %}
-            {% end %}
-        </ol>
-    </div>
-    <mbp:pagebreak></mbp:pagebreak>
-    
-    {% for feed in feeds %}
-    {% if feed.item_count > 0 %}
-    <div id="feed-{{ feed.idx }}">
-        <div>
-            {% if feed.idx < feed_count %}
-            <a href="#feed-{{ feed.idx+1 }}">Next Feed</a> |
-            {% end %}
-            
-            {% if feed.idx > 1 %}
-            <a href="#feed-{{ feed.idx-1 }}">Previous Feed</a> |
-            {% end %}
-        
-            <a href="#toc">TOC</a> |
-            {{ feed.idx }}/{{ feed_count }} |
-            {{ feed.item_count }} items
-        </div>
-        <h3><a href="#feed-content-{{ feed.idx }}">{{ feed.title }}</a></h3>
-        <ol>
-            {% for item in feed.items %}
-            <li>
-              <a href="#item-{{ feed.idx }}.{{ item.idx }}">{{ item.title }}</a>
-              {% if item.published %}<br/>{{ item.published }}{% end %}
-            </li>
-            {% end %}
-        </ol>
-    </div>
-    {% end %}
-    {% end %}
-  
-  </div><!-- end toc -->
-  <mbp:pagebreak></mbp:pagebreak>
-
-  <div id="content">
-  {% for feed in feeds %}
-  {% if feed.item_count > 0 %}
-  <div id="feed-content-{{ feed.idx }}">
-    <h2>{{ feed.title }}</h2>
-    {% for item in feed.items %}
-    <div id="item-{{ feed.idx }}.{{ item.idx }}">
-        <h3>
-            {% if item.url %}
-            <a href="{{ item.url }}">{{ item.title }}</a>
-            {% else %}
-            {{ item.title }}
-            {% end %}
-        </h3>
-        <div>
-            {% if item.idx < feed.item_count %}
-            <a href="#item-{{ feed.idx }}.{{ item.idx+1 }}">Next</a> |
-            {% elif feed.idx < feed_count %}
-            <a href="#feed-content-{{ feed.idx+1 }}">Next Feed</a> |
-            {% end %}
-            
-            <a href="#feed-{{ feed.idx }}">{{ feed.title[:5] }}...</a> |
-            <a href="#toc">TOC</a> |
-            {% if item.published %}{{ item.published }} |{% end %}
-            {{ item.idx }}/{{ feed.item_count }}
-        </div>
-        <div>
-            {{ item.content }}
-        </div>
-        {% end %}
-    </div>
-  </div>
-  {% end %}
-  {% end %}
-  </div>
-</body>
-</html>
-"""
-
 TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="zh-CN">
 <head>
@@ -302,7 +189,7 @@ TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
 <docTitle><text>{{ user['userName'] }}'s Google reader</text></docTitle>
 <docAuthor><text>{{ user['userName'] }}</text></docAuthor>
 <navMap>
-    {% if format == 1 %}
+    {% if format == 'periodical' %}
     <navPoint class="periodical">
         <navLabel><text>{{ user['userName'] }}'s Google reader</text></navLabel>
         <content src="content.html" />
@@ -315,6 +202,8 @@ TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
             <navPoint class="article" id="{{ feed.idx }}_{{ item.idx }}" playOrder="{{ item.idx }}">
               <navLabel><text>{{ escape(item.title) }}</text></navLabel>
               <content src="content.html#article_{{ feed.idx }}_{{ item.idx }}" />
+              <mbp:meta name="description">{{ escape(item.content[:200]) }}</mbp:meta>
+              <mbp:meta name="author">{% if item.author %}{{ item. author }}{% end %}</mbp:meta>
             </navPoint>
             {% end %}
         </navPoint>
@@ -402,30 +291,19 @@ class KindleReader(object):
     template_file = None
     password = None
     
-    remove_tags = ['script', 'object','video','embed','iframe','noscript']
+    remove_tags = ['script', 'object','video','embed','iframe','noscript', 'style']
     remove_attributes = ['class','id','title','style','width','height','onclick']
     max_image_number = 0
-    user_agent = "kindlereader/0.2"
+    user_agent = "kindlereader"
     
-    def __init__(self, work_dir=None, conf_file=None, template_file=None):
+    def __init__(self, work_dir=None, config=None, template_file=None):
 
         if work_dir:
             self.work_dir = work_dir
         else:
             self.work_dir = os.path.dirname(sys.argv[0])
-
-        if conf_file is None:
-            conf_file = os.path.join(self.work_dir, "config.ini")
-
-        if os.path.isfile(conf_file) is False:
-            raise Exception("config file '%s' not found" % conf_file)
         
-        self.config = ConfigParser.ConfigParser()
-        
-        if iswindows:
-            self.config.readfp(codecs.open(conf_file, "r", "utf-8-sig"))
-        else:
-            self.config.readfp(codecs.open(conf_file, "r", "utf-8"))
+        self.config = config
 
         if template_file is not None and os.path.isfile(template_file) is False:
             raise Exception("template file '%s' not found" % template_file)
@@ -443,7 +321,7 @@ class KindleReader(object):
         except:
             return None
       
-    def sendmail(self, data, file_type='html'):
+    def sendmail(self, data):
         """send html to kindle"""
     
         mail_host = self.get_config('mail', 'host')
@@ -466,7 +344,7 @@ class KindleReader(object):
         if not mail_port:
             mail_port = 25
             
-        print "send mail to %s ... " % mail_to,
+        logging.info("send mail to %s ... " % mail_to)
     
         msg = MIMEMultipart()
         msg['from'] = mail_from
@@ -481,7 +359,7 @@ class KindleReader(object):
     
         att = MIMEText(data, 'base64', 'utf-8')
         att["Content-Type"] = 'application/octet-stream'
-        att["Content-Disposition"] = 'attachment; filename="google-reader-%s.%s"' % (time.strftime('%H-%M-%S'), file_type)
+        att["Content-Disposition"] = 'attachment; filename="google-reader-%s.mobi"' % time.strftime('%H-%M-%S')
         msg.attach(att)
 
         try:
@@ -498,40 +376,13 @@ class KindleReader(object):
 
             mail.sendmail(msg['from'], msg['to'], msg.as_string())
             mail.close()
-            print "done."
         except Exception, e:
-            print "fail:",e
-
-    def make_html(self, user, feeds, save_file=False):
-
-        if self.template_file:
-            fp = open(self.template_file, 'r')
-            t = template.Template(fp.read())
-            fp.close()
-        else:
-            t  = template.Template(TEMPLATES['book.html'])
-
-        content = t.generate(
-            user = user,
-            feeds = feeds
-        )
-    
-        if save_file:
-            data_dir = os.path.join(self.work_dir, 'data')
-            if not os.path.exists(data_dir):
-                os.makedirs( data_dir )
-            
-            fp = open(os.path.join(data_dir,
-                'google-reader-%s.html' % time.strftime('%H-%M-%S') ), 'w')
-            fp.write(content)
-            fp.close()
-    
-        return content
+            logging.error("fail:%s" % e)
         
-    def make_mobi(self, user, feeds, format = 2):
+    def make_mobi(self, user, feeds, format = 'book'):
         """docstring for make_mobi"""
         
-        print "generate .mobi file... "
+        logging.info("generate .mobi file start... ")
         
         data_dir = os.path.join(self.work_dir, 'data')
         if not os.path.exists(data_dir):
@@ -553,20 +404,19 @@ class KindleReader(object):
             fp.write(content)
             fp.close()
 
-        mobi_file = "%s'GoogleReader(%s).mobi" % (user['userName'],
-                time.strftime('%m-%dT%Hh%Mm'))
+        mobi_file = "GoogleReader(%s).mobi" % time.strftime('%m-%dT%Hh%Mm')
         opf_file = os.path.join(data_dir, "content.opf")
 
-        subprocess.call('%s -unicode %s -o "%s" > log.txt' %
+        subprocess.call('%s %s -o "%s" > log.txt' %
                 (kindlegen, opf_file, mobi_file), shell=True)
 
         mobi_file = os.path.join(data_dir, mobi_file)
         if os.path.isfile(mobi_file) is False:
-            print "failed!"
+            logging.error("failed!")
             return None
         else:
             fsize = os.path.getsize(mobi_file)
-            print ".mobi save as: %s(%.2fMB)" %  (mobi_file, fsize/1048576)
+            logging.info(".mobi save as: %s(%.2fMB)" %  (mobi_file, fsize/1048576))
             return mobi_file
 
     def parse_summary(self, summary, link):
@@ -610,7 +460,7 @@ class KindleReader(object):
     def down_image(self, url, referer=None, filename=None):
         """download image"""
 
-        print "download: %s" % url,
+        logging.info("download: %s" % url)
         
         url = escape.utf8(url)
         image_guid = hashlib.sha1(url).hexdigest()
@@ -657,14 +507,14 @@ class KindleReader(object):
 
                 response.close()
                 localFile.close()
-                print "done."
+
             except Exception, e:
-                print 'fail: %s' % e
+                logging.error('fail: %s' % e)
                 localimage = False
             finally:
                 localFile, response, req = None, None, None
         else:
-            print "exists."
+            logging.info("exists.")
         
         return localimage
 
@@ -684,10 +534,20 @@ class KindleReader(object):
         reader.buildSubscriptionList()
         categoires = reader.getCategories()
         
+        select_categories = self.get_config('reader', 'select_categories')
         skip_categories = self.get_config('reader', 'skip_categories')
         
+        selects = []
+        if select_categories:
+            select_categories = select_categories.split(',')
+
+            for c in select_categories:
+                if c: selects.append(c.encode('utf-8').strip())
+            
+            select_categories = None
+        
         skips = []
-        if skip_categories:
+        if not selects and skip_categories:
             skip_categories = skip_categories.split(',')
 
             for c in skip_categories:
@@ -697,19 +557,35 @@ class KindleReader(object):
 
         feeds = {}
         for category in categoires:
-            if category.label not in skips:
-                fd = category.getFeeds()
-                for f in fd:
-                    if f.id not in feeds:
-                        feeds[f.id] = f
-                fd = None
+            skiped = False
+            if selects:
+                if category.label.encode("utf-8") in selects:
+                    fd = category.getFeeds()
+                    for f in fd:
+                        if f.id not in feeds:
+                            feeds[f.id] = f
+                    fd = None
+                else:
+                    skiped = True
+
             else:
+                if category.label.encode("utf-8") not in skips:
+                    fd = category.getFeeds()
+                    for f in fd:
+                        if f.id not in feeds:
+                            feeds[f.id] = f
+                    fd = None
+                else:
+                    skiped = True
+            
+            if skiped:
                 if iswindows:
                     category.label = category.label.encode("gbk")
-                print 'skip category: %s' % category.label
+                    
+                logging.info('skip category: %s' % category.label)
         
         max_items_number = self.get_config('reader', 'max_items_number')
-        make_read = self.get_config('reader', 'make_read')
+        mark_read = self.get_config('reader', 'mark_read')
         exclude_read = self.get_config('reader', 'exclude_read')
         max_image_per_article = self.get_config('reader', 'max_image_per_article')
 
@@ -737,7 +613,7 @@ class KindleReader(object):
             feed = feeds[feed_id]
 
             current_feed = current_feed + 1
-            print "\nget [%s/%s]: %s" % (current_feed, feed_num, feed.id)
+            logging.info("[%s/%s]: %s" % (current_feed, feed_num, feed.id))
             
             try:
                 feed_data = reader.getFeedContent(feed, exclude_read, number=max_items_number)
@@ -774,40 +650,70 @@ class KindleReader(object):
                     feed_idx += 1
                     feed.idx = feed_idx
                     updated_feeds.append(feed)
-                    print "update %s items." % feed.item_count
+                    logging.info("update %s items." % feed.item_count)
                 else:
-                    print "no update."
+                    logging.info("no update.")
             except Exception, e:
-                print "fail:", e
+                logging.error("fail:", e)
         
-        print "\nParse feed finished!\n"
         if updated_items > 0:
             mail_enable = self.get_config('mail', 'mail_enable')
             mobi_file = self.make_mobi(user, updated_feeds)
+            
+            kindle_format = self.get_config('general', 'kindle_format')
+            
+            if kindle_format not in ['book', 'periodical']:
+                kindle_format = 'book'
+            
             if mobi_file and mail_enable == '1':
                 fp = open(mobi_file, 'rb')
-                self.sendmail(fp.read(), 'mobi')
+                self.sendmail(fp.read())
                 fp.close()
         else:
-            print "no feed update."
+            logging.info("no feed update.")
 
 if __name__ == '__main__':
-    if not kindlegen:
-        print "Can't find kindlegen"
-        sys.exit(1)
-
-    st = time.time()
-    print "welcome, start ..."
     
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(msecs)03d %(levelname)-8s %(message)s',
+        datefmt='%m-%d %H:%M')
+    
+    work_dir = os.path.dirname(sys.argv[0])
+    conf_file = os.path.join(work_dir, "config.ini")
+
+    if os.path.isfile(conf_file) is False:
+        logging.error("config file '%s' not found" % conf_file)
+        sys.exit(1)
+    
+    config = ConfigParser.ConfigParser()
+    
+    if iswindows:
+        config.readfp(codecs.open(conf_file, "r", "utf-8-sig"))
+    else:
+        config.readfp(codecs.open(conf_file, "r", "utf-8"))
+        
+    if not kindlegen:
+        logging.error("Can't find kindlegen")
+        sys.exit(1)
+        
+    st = time.time()
+    logging.info("welcome, start ...")
+        
     try:
-        kr = KindleReader()
+        kr = KindleReader(work_dir=work_dir, config=config)
         kr.main()
     except Exception, e:
-        print e
+        logging.info("Error: %s " % e)
 
-    print "used time %.2fs" % (time.time()-st)
-    print "done."
-    # Most unix users will run this script directly from a terminal or as a cron
-    # job, just exit when the job is done.
-    if iswindows:
+    logging.info("used time %.2fs" % (time.time()-st))
+    logging.info("done.")
+    
+    try:
+        if self.config.get(section, name).strip() in ['1', 1]:
+            auto_exit = True
+        else:
+            auto_exit = False
+    except:
+        auto_exit = False
+        
+    if auto_exit:
         raw_input("Press any key to exit...")
