@@ -7,11 +7,12 @@
 
 ## 单用户版使用说明
 
-* 安装 python ( 2.5-2.7, 2.4和3.0未测试), 大多liunx和osx已内置
+* 安装 Python (建议版本 2.5~2.7, 2.4 和 3.0未测试), 大多Liunx和OSX已内置Python
 * 修改 config.sample.ini 为 config.ini 并按说明修改其中内容
 * 下载并拷贝 kindlegen 到 kindlereader.py 所在目录，并添加可执行权限
-* 在终端或命令符内运行 python kindlereader.py
-* Windows用户可以安装 py2exe 然执行 python build_exe.py 生成kindlereader.exe
+* 在终端或命令符内运行 ```python kindlereader.py```
+* Windows用户可以安装 py2exe 然执行 ```python build_exe.py``` 以生成 kindlereader.exe
+* kindlereader.exe 运行不安装 Python 环境, kindlereader.exe 和 kindlegen.exe 及 congif.ini 必须在一个目录内运行
 
 ## 参考
 
