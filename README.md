@@ -15,9 +15,9 @@
 
 ## 参考
 
-* python[http://www.python.org/](http://www.python.org/)
-* py2exe[http://www.py2exe.org/](http://www.py2exe.org/)
-* Kindlegen下载地址： [http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000234621](http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000234621)
+* python: [http://www.python.org/](http://www.python.org/)
+* py2exe: [http://www.py2exe.org/](http://www.py2exe.org/)
+* Kindlegen下载地址: [http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000234621](http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000234621)
 
 ## 许可
 
