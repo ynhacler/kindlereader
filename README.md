@@ -12,7 +12,7 @@
 * 下载并拷贝 kindlegen 到 kindlereader.py 所在目录，并添加可执行权限
 * 在终端或命令符内运行 ```python kindlereader.py```
 * Windows用户可以安装 py2exe 然执行 ```python build_exe.py``` 以生成 kindlereader.exe
-* kindlereader.exe 运行不需要安装 Python 环境, kindlereader.exe 和 kindlegen.exe 及 congif.ini 必须在一个目录内运行
+* kindlereader.exe 运行不需要安装 Python 环境, kindlereader.exe 和 kindlegen.exe 及 config.ini 必须在一个目录内运行
 
 ## 参考
 
