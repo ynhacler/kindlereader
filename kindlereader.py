@@ -25,6 +25,7 @@ import codecs
 import ConfigParser
 import getpass
 import subprocess
+import Queue,threading
 
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
@@ -282,21 +283,41 @@ def find_kindlegen_prog():
                 return fname
 
 kindlegen = find_kindlegen_prog()
+q = Queue.Queue(0)
+
+class ImageDownloader(threading.Thread):
+    global q
+    def __init__(self,threadname):
+        threading.Thread.__init__(self,name=threadname)
+        
+    def run(self):
+        while True:
+            i=q.get()
+            logging.info("download: %s" % i['url'])
+            try:
+                urllib.urlretrieve(i['url'],i['filename'])
+            except Exception,e:
+                logging.error("Failed: %s" % e)
+                # q.put(i)
+                
+            q.task_done()
 
 class KindleReader(object):
     """docstring for KindleReader"""
+    global q
     
     work_dir = None
     config = None
-    template_file = None
+    template_dir = None
     password = None
     
     remove_tags = ['script', 'object','video','embed','iframe','noscript', 'style']
     remove_attributes = ['class','id','title','style','width','height','onclick']
     max_image_number = 0
     user_agent = "kindlereader"
+    thread_numbers = 5
     
-    def __init__(self, work_dir=None, config=None, template_file=None):
+    def __init__(self, work_dir=None, config=None, template_dir=None):
 
         if work_dir:
             self.work_dir = work_dir
@@ -305,10 +326,10 @@ class KindleReader(object):
         
         self.config = config
 
-        if template_file is not None and os.path.isfile(template_file) is False:
-            raise Exception("template file '%s' not found" % template_file)
+        if template_dir is not None and os.path.isdir(template_dir) is False:
+            raise Exception("template dir '%s' not found" % template_dir)
         else:
-            self.template_file = template_file
+            self.template_dir = template_dir
 
         self.password =  self.get_config('reader', 'password')
         if not self.password:
@@ -419,7 +440,7 @@ class KindleReader(object):
             logging.info(".mobi save as: %s(%.2fMB)" %  (mobi_file, fsize/1048576))
             return mobi_file
 
-    def parse_summary(self, summary, link):
+    def parse_summary(self, summary, ref):
         """处理文章"""
 
         soup = BeautifulSoup(summary)
@@ -435,6 +456,7 @@ class KindleReader(object):
             tag.extract()
 
         img_count = 0
+        images = []
         for img in list(soup.findAll('img')):
             if (self.max_image_number >= 0  and img_count >= self.max_image_number) \
                 or img.has_key('src') is False \
@@ -444,7 +466,13 @@ class KindleReader(object):
                 img.extract()
             else:
                 try:
-                    localimage = self.down_image(img['src'], link)
+                    localimage, fullname = self.parse_image(img['src'], ref)
+                    
+                    if os.path.isfile(fullname) is False:
+                        images.append({
+                            'url':img['src'],
+                            'filename':fullname
+                        })
 
                     if localimage:
                         img['src'] = localimage
@@ -452,16 +480,13 @@ class KindleReader(object):
                     else:
                         img.extract()
                 except Exception, e:
-                    print e
+                    logging.info("error: %s" % e)
                     img.extract()
 
-        return soup.renderContents('utf-8')
+        return soup.renderContents('utf-8'), images
 
-    def down_image(self, url, referer=None, filename=None):
+    def parse_image(self, url, referer=None, filename=None):
         """download image"""
-
-        logging.info("download: %s" % url)
-        
         url = escape.utf8(url)
         image_guid = hashlib.sha1(url).hexdigest()
 
@@ -488,35 +513,11 @@ class KindleReader(object):
         img_dir  = os.path.join(self.work_dir, 'data', 'images', hash_dir)
         fullname = os.path.join(img_dir, filename)
         
-        localimage = 'images/%s/%s' % (hash_dir, filename)
-        if os.path.isfile(fullname) is False:
-            if not os.path.exists(img_dir):
-                os.makedirs( img_dir )
-            try:                
-                req = urllib2.Request(url)
-                req.add_header('User-Agent', self.user_agent)
-                req.add_header('Accept-Language', 'zh-cn,zh;q=0.7,nd;q=0.3')
-
-                if referer is not None:
-                    req.add_header('Referer', referer)
-
-                response = urllib2.urlopen(req)
-
-                localFile = open(fullname, 'wb')
-                localFile.write(response.read())
-
-                response.close()
-                localFile.close()
-
-            except Exception, e:
-                logging.error('fail: %s' % e)
-                localimage = False
-            finally:
-                localFile, response, req = None, None, None
-        else:
-            logging.info("exists.")
+        if not os.path.exists(img_dir):
+            os.makedirs( img_dir )
         
-        return localimage
+        localimage = 'images/%s/%s' % (hash_dir, filename)
+        return localimage, fullname
 
     def main(self):
         username = self.get_config('reader', 'username')
@@ -609,6 +610,7 @@ class KindleReader(object):
         
         feed_num, current_feed = len(feeds), 0
         updated_feeds = []
+        downing_images = []
         for feed_id in feeds:
             feed = feeds[feed_id]
 
@@ -617,35 +619,39 @@ class KindleReader(object):
             
             try:
                 feed_data = reader.getFeedContent(feed, exclude_read, number=max_items_number)
-            
+        
                 item_idx = 1
                 for item in feed_data['items']:
                     for category in item.get('categories', []):
                         if category.endswith('/state/com.google/reading-list'):
                             content = item.get('content', item.get('summary', {})).get('content', '')
-                            url    = None
+                            url     = None
+
                             for alternate in item.get('alternate', []):
                                 if alternate.get('type', '') == 'text/html':
                                     url = alternate['href']
                                     break
-                                
+                            
                             if content:
-                                item['content'] = self.parse_summary(content, url)
+                                item['content'], images = self.parse_summary(content, url)
                                 item['idx'] = item_idx
                                 item = Item(reader, item, feed)
                                 item_idx += 1
+                            
+                                downing_images += images
+                            
                             break
 
                 feed.item_count = len(feed.items)
                 updated_items += feed.item_count
-                
+            
                 if mark_read:
                     if feed.item_count >= max_items_number:
                         for item in feed.items:
                             item.markRead()
                     elif feed.item_count > 0:
                         reader.markFeedAsRead(feed)
-            
+        
                 if feed.item_count > 0:
                     feed_idx += 1
                     feed.idx = feed_idx
@@ -654,7 +660,21 @@ class KindleReader(object):
                 else:
                     logging.info("no update.")
             except Exception, e:
-                logging.error("fail:", e)
+                logging.error("fail: %s" % e)
+        
+        #download image by multithreading
+        if downing_images:
+            for i in downing_images:
+                q.put(i)
+                
+            threads=[]
+            for i in range(self.thread_numbers):
+                t = ImageDownloader('Thread %s'%(i+1))
+                threads.append(t)
+            for t in threads:
+                t.setDaemon(True)
+                t.start()
+            q.join()
         
         if updated_items > 0:
             mail_enable = self.get_config('mail', 'mail_enable')
@@ -698,11 +718,11 @@ if __name__ == '__main__':
     st = time.time()
     logging.info("welcome, start ...")
         
-    try:
-        kr = KindleReader(work_dir=work_dir, config=config)
-        kr.main()
-    except Exception, e:
-        logging.info("Error: %s " % e)
+    # try:
+    kr = KindleReader(work_dir=work_dir, config=config)
+    kr.main()
+    # except Exception, e:
+        # logging.info("Error: %s " % e)
 
     logging.info("used time %.2fs" % (time.time()-st))
     logging.info("done.")
