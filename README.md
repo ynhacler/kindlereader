@@ -5,6 +5,7 @@
 * [master](https://github.com/jiedan/kindlereader/) 分支为单用户版(基于python), 运行于 Linux, Mac OSX, Windows
 * [gae](https://github.com/jiedan/kindlereader/tree/gae) 分支为运行于 Google app engine 的多用户版, demo: [http://reader.dogear.mobi](http://reader.dogear.mobi)
 
+
 ## 单用户版使用说明
 
 * 安装 Python (建议版本 2.5~2.7, 2.4 和 3.0未测试), 大多Liunx和OSX已内置Python

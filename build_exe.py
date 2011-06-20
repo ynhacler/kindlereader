@@ -3,17 +3,18 @@
 
 from distutils.core import setup  
 import py2exe
+from kindlereader import __version__
 
 options = {"py2exe":  
             {   "compressed": 1,
                 "optimize": 2,
-                "includes":"os,sys",
+                "includes":"os,sys,sgmllib",
                 "bundle_files": 1
             }
           }
 setup(
-    version = "0.3.2",
-    description = "Send google reader to your kindle",
+    version = __version__,
+    description = "Push google reader to your kindle",
     name = "kindlereader",
     options = options,
     zipfile=None,

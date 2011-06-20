@@ -6,7 +6,7 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 """
 
 __author__  = "Jiedan<lxb429@gmail.com>"
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 
 import sys
 import os
@@ -28,7 +28,9 @@ import subprocess
 import Queue,threading
 
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
+
+work_dir = os.path.dirname(sys.argv[0])
+sys.path.append(os.path.join(work_dir, 'lib'))
 
 from libgreader import *
 from tornado import template
@@ -697,7 +699,6 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(msecs)03d %(levelname)-8s %(message)s',
         datefmt='%m-%d %H:%M')
     
-    work_dir = os.path.dirname(sys.argv[0])
     conf_file = os.path.join(work_dir, "config.ini")
 
     if os.path.isfile(conf_file) is False:
@@ -718,11 +719,11 @@ if __name__ == '__main__':
     st = time.time()
     logging.info("welcome, start ...")
         
-    # try:
-    kr = KindleReader(work_dir=work_dir, config=config)
-    kr.main()
-    # except Exception, e:
-        # logging.info("Error: %s " % e)
+    try:
+        kr = KindleReader(work_dir=work_dir, config=config)
+        kr.main()
+    except Exception, e:
+        logging.info("Error: %s " % e)
 
     logging.info("used time %.2fs" % (time.time()-st))
     logging.info("done.")
@@ -735,5 +736,5 @@ if __name__ == '__main__':
     except:
         auto_exit = False
         
-    if auto_exit:
+    if not auto_exit:
         raw_input("Press any key to exit...")
