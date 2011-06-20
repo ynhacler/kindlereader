@@ -11,7 +11,7 @@
 * 修改 config.sample.ini 为 config.ini 并按说明修改其中内容
 * 下载并拷贝 kindlegen 到 kindlereader.py 所在目录，并添加可执行权限
 * 在终端或命令符内运行 python kindlereader.py
-* Windows用户可以安装 py2exe 然
+* Windows用户可以安装 py2exe 然执行 python build_exe.py 生成kindlereader.exe
 
 ## 参考
 
