@@ -12,6 +12,3 @@ mail_sender = ""
 # Get it from https://www.google.com/accounts/ManageDomains
 consumer_key = ""
 consumer_secret = ""
-
-# Billing Status (True or False)
-billing_enabled = False

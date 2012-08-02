@@ -6,7 +6,6 @@
 
 * 修改 app.yaml 中 application id,
 * 将 config.example.py 更名为 config.py 并配置其中内容
-* 如果账单开启则将 queue.example.billing.yaml 更名为 queue.yaml 否则将 queue.example.yaml 更名为 queue.yaml
 * 使用 Google App Engine Launcher 上传至服务器
 
 ## 许可

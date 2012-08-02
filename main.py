@@ -47,12 +47,7 @@ def deflate_and_base64_encode( string_val ):
 def new_queue_name( base_name="testqueue" ):
     """docstring for get_queue_name"""
     
-    if billing_enabled:
-        max_id = 49
-    else:
-        max_id = 4
-
-    return "%s%s" % (base_name, random.randint(0, max_id))
+    return "%s%s" % (base_name, random.randint(0, 4))
 
 class GoogleReaderUser(db.Model):
     kindle_email = db.StringProperty()
