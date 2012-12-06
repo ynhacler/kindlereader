@@ -4,8 +4,8 @@
 
 ## 安装
 
+* 修改 app.yaml 中 application id
 * [申请Google OAuth](https://github.com/jiedan/kindlereader/wiki/Google-OAuth%E7%94%B3%E8%AF%B7)
-* 修改 app.yaml 中 application id,
 * 编辑 config.py 并配置其中内容
 * 使用 Google App Engine Launcher 上传至服务器
 
