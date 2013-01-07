@@ -686,32 +686,6 @@ class PostWorkerHandler(BaseHandler):
                 q.put()
         content = None
 
-class MailHandler(BaseHandler):
-    """docstring for TestHandler"""
-
-    def get(self):
-        return
-        """docstring for get"""
-        gr_users = GoogleReaderUser.all()
-        
-        for gr_user in gr_users:
-            taskqueue.add(url='/mail',
-                          method = 'POST',
-                          params={'email':gr_user.key().name()})
-                          
-            self.response.out.write("sent to %s." % gr_user.key().name())
-    
-    def post(self):
-        
-        email = self.request.get('email')
-        mail.send_mail(sender = "kindlereader<feeds@dogear.mobi>",
-                      to = email,
-                      subject = u"请重新设置投递分类",
-                      body = u"""Hi,
-    Kinldereader(http://feeder.dogear.mobi)系统升级出错，造成原设置分类信息丢失，请登录kindlereader重新设置，请凉解！
-                        
-jiedan.""")
-
 class FeedbackHandler(BaseHandler):
     """docstring for CommentsHandler"""
     
@@ -1361,7 +1335,6 @@ def main():
                         ('/qna', QnAHandler),
                         ('/cancel_account', CancelAccountHandler),
                         ('/oauth/?(.*)', OAuthAuthHandler),
-                        ('/mail', MailHandler),
                         ('/deliver', DeliverHandler),
                         ('/feedback', FeedbackHandler),
                         ('/worker', WorkerHandler),
