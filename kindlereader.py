@@ -680,13 +680,14 @@ class KindleReader(object):
         
         if updated_items > 0:
             mail_enable = self.get_config('mail', 'mail_enable')
-            mobi_file = self.make_mobi(user, updated_feeds)
-            
+                       
             kindle_format = self.get_config('general', 'kindle_format')
             
             if kindle_format not in ['book', 'periodical']:
                 kindle_format = 'book'
-            
+           
+            mobi_file = self.make_mobi(user, updated_feeds, kindle_format)
+
             if mobi_file and mail_enable == '1':
                 fp = open(mobi_file, 'rb')
                 self.sendmail(fp.read())
