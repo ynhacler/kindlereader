@@ -706,10 +706,10 @@ if __name__ == '__main__':
         sys.exit(1)
     
     config = ConfigParser.ConfigParser()
-    
-    if iswindows:
+
+    try:
         config.readfp(codecs.open(conf_file, "r", "utf-8-sig"))
-    else:
+    except Exception, e:
         config.readfp(codecs.open(conf_file, "r", "utf-8"))
         
     if not kindlegen:
