@@ -1,7 +1,7 @@
 # Kindlereader
 
 一个定时将Google reader发送至kindle的工具
-其中NoGR分支由WilliamGates(https://github.com/williamgateszhao)开发
+其中NoGR分支由[WilliamGates](https://github.com/williamgateszhao)开发
 
 * [master](https://github.com/jiedan/kindlereader/) 分支为单用户版(基于python), 运行于 Linux, Mac OSX, Windows
 * [gae](https://github.com/jiedan/kindlereader/tree/gae) 分支为运行于 Google app engine 的多用户版, demo: [http://www.mydogear.com](http://www.mydogear.com)
@@ -29,7 +29,11 @@ Kindlereader is Licensed under the MIT license: [http://www.opensource.org/licen
 
 ## NoGR分支版本历史
 
-0.4.2 修复了某些feed地址必须以"/"结尾或反之所导致的问题，对feed是否读取成功进行判断
-0.4.1 增加限制最旧文章时间的功能
+* 0.4.2 修复了某些feed地址必须以"/"结尾或反之所导致的问题，对feed是否读取成功进行判断
+* 0.4.1 增加限制最旧文章时间的功能
       修改了日期格式
-0.4.0 it works
+* 0.4.0 it works
+
+## 待开发
+
+* 解决图片url中含有非ASCII字符时的下载错误
