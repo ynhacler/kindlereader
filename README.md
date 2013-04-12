@@ -11,6 +11,7 @@
 ## 单用户版/NoGR版使用说明
 
 * 安装 Python (建议版本 2.5~2.7, 2.4 和 3.0未测试), 大多Liunx和OSX已内置Python
+* (NoGR版本特有）安装 Python 的 feedparser 库，对于 Ubuntu 来说是 python-feedparser 软件包
 * 修改 config.sample.ini 为 config.ini 并按说明修改其中内容
 * 下载并拷贝 kindlegen 到 kindlereader.py 所在目录，并添加可执行权限
 * 在终端或命令符内运行 ```python kindlereader.py```
