@@ -6,7 +6,8 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 """
 
 __author__  = "Jiedan<lxb429@gmail.com>"
-__version__ = "0.3.3"
+__author__  = "williamgateszhao<williamgateszhao@gmail.com>"
+__version__ = "0.4.2"
 
 import sys
 import os
@@ -21,18 +22,20 @@ from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.utils import parsedate_tz
 from lib import smtplib
+from datetime import date, datetime, timedelta
 import codecs
 import ConfigParser
 import getpass
 import subprocess
 import Queue,threading
+import feedparser
 
 import sys
 
 work_dir = os.path.dirname(sys.argv[0])
 sys.path.append(os.path.join(work_dir, 'lib'))
 
-from libgreader import *
+##from libgreader import *
 from tornado import template
 from tornado import escape
 from BeautifulSoup import BeautifulSoup
@@ -50,7 +53,7 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
-    <title>{{ user['userName'] }}'s google reader</title>
+    <title>{{ user }}'s kindle reader</title>
     <style type="text/css">
     body{
         font-size: 1.1em;
@@ -104,7 +107,7 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
 </head>
 <body>
     <div id="cover">
-        <h1 id="title">{{ user['userName'] }}'s Google reader</h1>
+        <h1 id="title">{{ user }}'s kindle reader</h1>
         <a href="#content">Go straight to first item</a><br />
         {{ datetime.datetime.now().strftime("%m/%d %H:%M") }}
     </div>
@@ -114,12 +117,12 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
             {% set feed_count = 0 %}
             {% for feed in feeds %}
             
-            {% if feed.item_count > 0 %}
+            {% if len(feed['entries']) > 0 %}
             {% set feed_count = feed_count + 1 %}
             <li>
-              <a href="#sectionlist_{{ feed.idx }}">{{ feed.title }}</a>
+              <a href="#sectionlist_{{ feed['idx'] }}">{{ feed['title'] }}</a>
               <br />
-              {{ feed.item_count }} items
+              {{ len(feed['entries']) }} items
             </li>
             {% end %}
             
@@ -127,27 +130,27 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
         </ol> 
           
         {% for feed in feeds %}
-        {% if feed.item_count > 0 %}
+        {% if len(feed['entries']) > 0 %}
         <mbp:pagebreak></mbp:pagebreak>
-        <div id="sectionlist_{{ feed.idx }}" class="section">
-            {% if feed.idx < feed_count %}
-            <a href="#sectionlist_{{ feed.idx+1 }}">Next Feed</a> |
+        <div id="sectionlist_{{ feed['idx'] }}" class="section">
+            {% if feed['idx'] < feed_count %}
+            <a href="#sectionlist_{{ feed['idx']+1 }}">Next Feed</a> |
             {% end %}
             
-            {% if feed.idx > 1 %}
-            <a href="#sectionlist_{{ feed.idx-1 }}">Previous Feed</a> |
+            {% if feed['idx'] > 1 %}
+            <a href="#sectionlist_{{ feed['idx']-1 }}">Previous Feed</a> |
             {% end %}
         
             <a href="#toc">TOC</a> |
-            {{ feed.idx }}/{{ feed_count }} |
-            {{ feed.item_count }} items
+            {{ feed['idx'] }}/{{ feed_count }} |
+            {{ len(feed['entries']) }} items
             <br />
-            <h3>{{ feed.title }}</h3>
+            <h3>{{ feed['title'] }}</h3>
             <ol>
-                {% for item in feed.items %}
+                {% for item in feed['entries'] %}
                 <li>
-                  <a href="#article_{{ feed.idx }}_{{ item.idx }}">{{ item.title }}</a><br/>
-                  {% if item.published %}{{ item.published }}{% end %}
+                  <a href="#article_{{ feed['idx'] }}_{{ item['idx'] }}">{{ item['title'] }}</a><br/>
+                  {% if item['published'] %}{{ item['published'] }}{% end %}
                 </li>
                 {% end %}
             </ol>
@@ -158,19 +161,19 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
     <mbp:pagebreak></mbp:pagebreak>
     <div id="content">
         {% for feed in feeds %}
-        {% if feed.item_count > 0 %}
-        <div id="section_{{ feed.idx }}" class="section">
-        {% for item in feed.items %}
-        <div id="article_{{ feed.idx }}_{{ item.idx }}" class="article">
+        {% if len(feed['entries']) > 0 %}
+        <div id="section_{{ feed['idx'] }}" class="section">
+        {% for item in feed['entries'] %}
+        <div id="article_{{ feed['idx'] }}_{{ item['idx'] }}" class="article">
             <h2 class="do_article_title">
-              {% if item.url %}
-              <a href="{{ item.url }}">{{ item.title }}</a>
+              {% if item['url'] %}
+              <a href="{{ item['url'] }}">{{ item['title'] }}</a>
               {% else %}
-              {{ item.title }}
+              {{ item['title'] }}
               {% end %}
             </h2>
-            {% if item.published %}{{ item.published }}{% end %}
-            <div>{{ item.content }}</div>
+            {% if item['published'] %}{{ item['published'] }}{% end %}
+            <div>{{ item['content'] }}</div>
         </div>
         {% end %}
         </div>
@@ -184,29 +187,28 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
 TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1" xml:lang="zh-CN">
 <head>
-<meta name="dtb:uid" content="{{ user['userId'] }}" />
 <meta name="dtb:depth" content="4" />
 <meta name="dtb:totalPageCount" content="0" />
 <meta name="dtb:maxPageNumber" content="0" />
 </head>
-<docTitle><text>{{ user['userName'] }}'s Google reader</text></docTitle>
-<docAuthor><text>{{ user['userName'] }}</text></docAuthor>
+<docTitle><text>{{ user }}'s kindle reader</text></docTitle>
+<docAuthor><text>{{ user }}</text></docAuthor>
 <navMap>
     {% if format == 'periodical' %}
     <navPoint class="periodical">
-        <navLabel><text>{{ user['userName'] }}'s Google reader</text></navLabel>
+        <navLabel><text>{{ user }}'s kindle reader</text></navLabel>
         <content src="content.html" />
         {% for feed in feeds %}
-        {% if feed.item_count > 0 %}
-        <navPoint class="section" id="{{ feed.idx }}">
-            <navLabel><text>{{ escape(feed.title) }}</text></navLabel>
-            <content src="content.html#section_{{ feed.idx }}" />
-            {% for item in feed.items %}
-            <navPoint class="article" id="{{ feed.idx }}_{{ item.idx }}" playOrder="{{ item.idx }}">
-              <navLabel><text>{{ escape(item.title) }}</text></navLabel>
-              <content src="content.html#article_{{ feed.idx }}_{{ item.idx }}" />
-              <mbp:meta name="description">{{ escape(item.content[:200]) }}</mbp:meta>
-              <mbp:meta name="author">{% if item.author %}{{ item. author }}{% end %}</mbp:meta>
+        {% if len(feed['entries']) > 0 %}
+        <navPoint class="section" id="{{ feed['idx'] }}">
+            <navLabel><text>{{ escape(feed['title']) }}</text></navLabel>
+            <content src="content.html#section_{{ feed['idx'] }}" />
+            {% for item in feed['entries'] %}
+            <navPoint class="article" id="{{ feed['idx'] }}_{{ item['idx'] }}" playOrder="{{ item['idx'] }}">
+              <navLabel><text>{{ escape(item['title']) }}</text></navLabel>
+              <content src="content.html#article_{{ feed['idx'] }}_{{ item['idx'] }}" />
+              <mbp:meta name="description">{{ escape(item['content'][:200]) }}</mbp:meta>
+              <mbp:meta name="author">{% if item['author'] %}{{ item['author'] }}{% end %}</mbp:meta>
             </navPoint>
             {% end %}
         </navPoint>
@@ -215,14 +217,14 @@ TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
     </navPoint>
     {% else %}
     <navPoint class="book">
-        <navLabel><text>{{ user['userName'] }}'s Google reader</text></navLabel>
+        <navLabel><text>{{ user }}'s kindle reader</text></navLabel>
         <content src="content.html" />
         {% for feed in feeds %}
-        {% if feed.item_count > 0 %}
-            {% for item in feed.items %}
-            <navPoint class="chapter" id="{{ feed.idx }}_{{ item.idx }}" playOrder="{{ item.idx }}">
-                <navLabel><text>{{ escape(item.title) }}</text></navLabel>
-                <content src="content.html#article_{{ feed.idx }}_{{ item.idx }}" />
+        {% if len(feed['entries']) > 0 %}
+            {% for item in feed['entries'] %}
+            <navPoint class="chapter" id="{{ feed['idx'] }}_{{ item['idx'] }}" playOrder="{{ item['idx'] }}">
+                <navLabel><text>{{ escape(item['title']) }}</text></navLabel>
+                <content src="content.html#article_{{ feed['idx'] }}_{{ item['idx'] }}" />
             </navPoint>
             {% end %}
         {% end %}
@@ -237,12 +239,12 @@ TEMPLATES['content.opf']= """<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uid">
 <metadata>
 <dc-metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:title>{{ user['userName'] }}'s Google reader({{ datetime.datetime.now().strftime("%m/%d %H:%M") }})</dc:title>
+    <dc:title>{{ user }}'s kindle reader({{ datetime.datetime.now().strftime("%m/%d %H:%M") }})</dc:title>
     <dc:language>zh-CN</dc:language>
-    <dc:identifier id="uid">{{ user['userId'] }}{{ datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ") }}</dc:identifier>
+    <dc:identifier id="uid">{{ user }}{{ datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ") }}</dc:identifier>
     <dc:creator>kindlereader</dc:creator>
     <dc:publisher>kindlereader</dc:publisher>
-    <dc:subject>{{ user['userName'] }}'s Google reader</dc:subject>
+    <dc:subject>{{ user }}'s kindle reader</dc:subject>
     <dc:date>{{ datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ") }}</dc:date>
     <dc:description></dc:description>
 </dc-metadata>
@@ -332,10 +334,6 @@ class KindleReader(object):
             raise Exception("template dir '%s' not found" % template_dir)
         else:
             self.template_dir = template_dir
-
-        self.password =  self.get_config('reader', 'password')
-        if not self.password:
-            self.password = getpass.getpass("please input your google reader's password:")
             
     def get_config(self, section, name):
         
@@ -374,7 +372,7 @@ class KindleReader(object):
         msg['to'] = mail_to
         msg['subject'] = 'Convert'
     
-        htmlText = 'google reader delivery.'
+        htmlText = 'kindle reader delivery.'
         msg.preamble = htmlText
     
         msgText = MIMEText(htmlText, 'html', 'utf-8')  
@@ -382,7 +380,7 @@ class KindleReader(object):
     
         att = MIMEText(data, 'base64', 'utf-8')
         att["Content-Type"] = 'application/octet-stream'
-        att["Content-Disposition"] = 'attachment; filename="google-reader-%s.mobi"' % time.strftime('%H-%M-%S')
+        att["Content-Disposition"] = 'attachment; filename="kindle-reader-%s.mobi"' % time.strftime('%Y%m%d-%H%M%S')
         msg.attach(att)
 
         try:
@@ -410,7 +408,6 @@ class KindleReader(object):
         data_dir = os.path.join(self.work_dir, 'data')
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
-
         for tpl in TEMPLATES:
             if tpl is 'book.html':
                 continue
@@ -427,7 +424,7 @@ class KindleReader(object):
             fp.write(content)
             fp.close()
 
-        mobi_file = "GoogleReader(%s).mobi" % time.strftime('%m-%dT%Hh%Mm')
+        mobi_file = "KindleReader(%s).mobi" % time.strftime('%Y%m%d-%H%M%S')
         opf_file = os.path.join(data_dir, "content.opf")
 
         subprocess.call('%s %s -o "%s" > log.txt' %
@@ -461,10 +458,10 @@ class KindleReader(object):
         images = []
         for img in list(soup.findAll('img')):
             if (self.max_image_number >= 0  and img_count >= self.max_image_number) \
-                or img.has_key('src') is False \
-                or img['src'].startswith("http://union.vancl.com/") \
-                or img['src'].startswith("http://www1.feedsky.com/") \
-                or img['src'].startswith("http://feed.feedsky.com/~flare/"):
+                or img.has_key('src') is False :
+                ##or img['src'].startswith("http://union.vancl.com/") \
+                ##or img['src'].startswith("http://www1.feedsky.com/") \
+                ##or img['src'].startswith("http://feed.feedsky.com/~flare/"):
                 img.extract()
             else:
                 try:
@@ -522,76 +519,13 @@ class KindleReader(object):
         return localimage, fullname
 
     def main(self):
-        username = self.get_config('reader', 'username')
-        password = self.get_config('reader', 'password')
-
-        if not password and self.password:
-            password = self.password
-        
-        if not username or not password:
-            raise Exception("google reader's username or password is empty!")
-
-        auth = ClientAuth(username, password)
-        reader = GoogleReader(auth)
-        user = reader.getUserInfo()
-        reader.buildSubscriptionList()
-        categoires = reader.getCategories()
-        
-        select_categories = self.get_config('reader', 'select_categories')
-        skip_categories = self.get_config('reader', 'skip_categories')
-        
-        selects = []
-        if select_categories:
-            select_categories = select_categories.split(',')
-
-            for c in select_categories:
-                if c: selects.append(c.encode('utf-8').strip())
-            
-            select_categories = None
-        
-        skips = []
-        if not selects and skip_categories:
-            skip_categories = skip_categories.split(',')
-
-            for c in skip_categories:
-                if c: skips.append(c.encode('utf-8').strip())
-            
-            skip_categories = None
-
-        feeds = {}
-        for category in categoires:
-            skiped = False
-            if selects:
-                if category.label.encode("utf-8") in selects:
-                    fd = category.getFeeds()
-                    for f in fd:
-                        if f.id not in feeds:
-                            feeds[f.id] = f
-                    fd = None
-                else:
-                    skiped = True
-
-            else:
-                if category.label.encode("utf-8") not in skips:
-                    fd = category.getFeeds()
-                    for f in fd:
-                        if f.id not in feeds:
-                            feeds[f.id] = f
-                    fd = None
-                else:
-                    skiped = True
-            
-            if skiped:
-                if iswindows:
-                    category.label = category.label.encode("gbk")
-                    
-                logging.info('skip category: %s' % category.label)
-        
+        user = self.get_config('reader', 'username')
         max_items_number = self.get_config('reader', 'max_items_number')
         mark_read = self.get_config('reader', 'mark_read')
         exclude_read = self.get_config('reader', 'exclude_read')
         max_image_per_article = self.get_config('reader', 'max_image_per_article')
-
+        max_old_date=self.get_config('reader', 'max_old_date')
+        
         try: 
             max_image_per_article = int(max_image_per_article)
             self.max_image_number = max_image_per_article
@@ -602,68 +536,74 @@ class KindleReader(object):
             max_items_number = int(max_items_number)
         else:
             max_items_number = 50
-                
-        if exclude_read is None or not exclude_read.isdigit() or int(exclude_read) is 1:
-            exclude_read = True
-        else:
-            exclude_read = False
             
-        feed_idx,work_idx,updated_items = 0, 1, 0
-        
-        feed_num, current_feed = len(feeds), 0
+        if max_old_date and max_old_date.isdigit():
+            max_old_date = timedelta(int(max_old_date))
+        else:
+            max_old_date = timedelta(5)
+            
+        feeds = []
+        feeds_options = self.config.options("feeds")
+        for feeds_option in feeds_options:
+            if self.config.get("feeds",feeds_option):
+                feeds.append(self.config.get("feeds",feeds_option))
+         
+        feed_idx = 1       
+        feed_num = len(feeds)
         updated_feeds = []
         downing_images = []
-        for feed_id in feeds:
-            feed = feeds[feed_id]
+        
+        for feed in feeds:
+            logging.info("[%s/%s]:%s" % (feed_idx, feed_num,feed))
 
-            current_feed = current_feed + 1
-            logging.info("[%s/%s]: %s" % (current_feed, feed_num, feed.id))
-            
             try:
-                feed_data = reader.getFeedContent(feed, exclude_read, number=max_items_number)
-        
+                feed_data = feedparser.parse(feed)
+                if not 'title' in feed_data.feed:
+                    feed_data = feedparser.parse(feed[0:-1])
+                    if not 'title' in feed_data.feed:
+                        continue
+                elif not 'title' in feed_data.feed:
+                    continue
+            except Exception, e:
+                logging.error("fail: %s" % e)
+                continue
+                    
+            try:
+                local = {
+                         'idx': feed_idx,
+                         'entries': [],
+                         'title': feed_data.feed['title'],
+                }
+                
                 item_idx = 1
-                for item in feed_data['items']:
-                    for category in item.get('categories', []):
-                        if category.endswith('/state/com.google/reading-list'):
-                            content = item.get('content', item.get('summary', {})).get('content', '')
-                            url     = None
-
-                            for alternate in item.get('alternate', []):
-                                if alternate.get('type', '') == 'text/html':
-                                    url = alternate['href']
-                                    break
-                            
-                            if content:
-                                item['content'], images = self.parse_summary(content, url)
-                                item['idx'] = item_idx
-                                item = Item(reader, item, feed)
-                                item_idx += 1
-                            
-                                downing_images += images
-                            
-                            break
-
-                feed.item_count = len(feed.items)
-                updated_items += feed.item_count
-            
-                if mark_read:
-                    if feed.item_count >= max_items_number:
-                        for item in feed.items:
-                            item.markRead()
-                    elif feed.item_count > 0:
-                        reader.markFeedAsRead(feed)
-        
-                if feed.item_count > 0:
+                datetoday=date.today()
+                for entry in feed_data.entries:
+                    if date.today() - date(*entry.published_parsed[0:3]) > max_old_date:
+                        continue
+                    if item_idx > max_items_number:
+                        break
+                    published_datetime=datetime(*entry.published_parsed[0:6])
+                    local_entry = {
+                                    'idx': item_idx,
+                                    'title': entry.title,
+                                    'published':published_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                                    'url':entry.link,
+                                    'author':entry.author,
+                        }
+                    local_entry['content'], images = self.parse_summary(entry.content[0].value, entry.link)
+                    local['entries'].append(local_entry)
+                    downing_images += images
+                    item_idx += 1
+                
+                if len(local['entries']) > 0:
+                    updated_feeds.append(local)
                     feed_idx += 1
-                    feed.idx = feed_idx
-                    updated_feeds.append(feed)
-                    logging.info("update %s items." % feed.item_count)
+                    logging.info("update %s items." % len(local['entries']))
                 else:
                     logging.info("no update.")
             except Exception, e:
                 logging.error("fail: %s" % e)
-        
+
         #download image by multithreading
         if downing_images:
             for i in downing_images:
@@ -678,16 +618,14 @@ class KindleReader(object):
                 t.start()
             q.join()
         
-        if updated_items > 0:
+        ##if updated_items > 0:
+        if len(updated_feeds)>0:
             mail_enable = self.get_config('mail', 'mail_enable')
-                       
             kindle_format = self.get_config('general', 'kindle_format')
-            
             if kindle_format not in ['book', 'periodical']:
                 kindle_format = 'book'
            
             mobi_file = self.make_mobi(user, updated_feeds, kindle_format)
-
             if mobi_file and mail_enable == '1':
                 fp = open(mobi_file, 'rb')
                 self.sendmail(fp.read())
