@@ -7,7 +7,7 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 
 __author__  = "Jiedan<lxb429@gmail.com>"
 __author__  = "williamgateszhao<williamgateszhao@gmail.com>"
-__version__ = "0.4.2"
+__version__ = "0.4.4"
 
 import sys
 import os
@@ -29,8 +29,7 @@ import getpass
 import subprocess
 import Queue,threading
 import feedparser
-
-import sys
+##import sys
 
 work_dir = os.path.dirname(sys.argv[0])
 sys.path.append(os.path.join(work_dir, 'lib'))
@@ -39,6 +38,7 @@ sys.path.append(os.path.join(work_dir, 'lib'))
 from tornado import template
 from tornado import escape
 from BeautifulSoup import BeautifulSoup
+from kindlestrip import *
 
 import socket, urllib2, urllib
 socket.setdefaulttimeout(20)
@@ -131,7 +131,7 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
           
         {% for feed in feeds %}
         {% if len(feed['entries']) > 0 %}
-        <mbp:pagebreak></mbp:pagebreak>
+        <mbp:pagebreak />
         <div id="sectionlist_{{ feed['idx'] }}" class="section">
             {% if feed['idx'] < feed_count %}
             <a href="#sectionlist_{{ feed['idx']+1 }}">Next Feed</a> |
@@ -158,7 +158,7 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
         {% end %}
         {% end %}
     </div>
-    <mbp:pagebreak></mbp:pagebreak>
+    <mbp:pagebreak />
     <div id="content">
         {% for feed in feeds %}
         {% if len(feed['entries']) > 0 %}
@@ -424,13 +424,29 @@ class KindleReader(object):
             fp.write(content)
             fp.close()
 
-        mobi_file = "KindleReader(%s).mobi" % time.strftime('%Y%m%d-%H%M%S')
+        mobi8_file = "KindleReader8-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
+        mobi7_file = "KindleReader-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
         opf_file = os.path.join(data_dir, "content.opf")
-
         subprocess.call('%s %s -o "%s" > log.txt' %
-                (kindlegen, opf_file, mobi_file), shell=True)
-
-        mobi_file = os.path.join(data_dir, mobi_file)
+                (kindlegen, opf_file, mobi8_file), shell=True)
+        
+        ##kindlegen生成的mobi，含有7/8两种格式
+        mobi8_file = os.path.join(data_dir, mobi8_file)
+        ##kindlestrip处理过的mobi，只含v7格式
+        mobi7_file = os.path.join(data_dir, mobi7_file)
+        try:
+            data_file = file(mobi8_file, 'rb').read()
+            strippedFile = SectionStripper(data_file)
+            file(mobi7_file, 'wb').write(strippedFile.getResult())
+            ##print "Header Bytes: " + binascii.b2a_hex(strippedFile.getHeader())
+            ##if len(sys.argv)==4:
+            ##    file(sys.argv[3], 'wb').write(strippedFile.getStrippedData())
+            mobi_file = mobi7_file
+        except Exception, e:
+            mobi_file = mobi8_file
+            logging.error("Error: %s" % e)
+        
+        ##mobi_file = os.path.join(data_dir, mobi7_file)
         if os.path.isfile(mobi_file) is False:
             logging.error("failed!")
             return None
