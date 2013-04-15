@@ -558,12 +558,14 @@ class KindleReader(object):
 
             try:
                 feed_data = feedparser.parse(feed)
-                if not 'title' in feed_data.feed:
+                if (not 'title' in feed_data.feed) and (feed.endswith('/')):
                     feed_data = feedparser.parse(feed[0:-1])
                     if not 'title' in feed_data.feed:
                         continue
-                elif not 'title' in feed_data.feed:
-                    continue
+                elif (not 'title' in feed_data.feed) and (not feed.endswith('/')):
+                    feed_data = feedparser.parse(feed+'/')
+                    if not 'title' in feed_data.feed:
+                        continue
             except Exception, e:
                 logging.error("fail: %s" % e)
                 continue
@@ -666,9 +668,9 @@ if __name__ == '__main__':
 
     logging.info("used time %.2fs" % (time.time()-st))
     logging.info("done.")
-    
+
     try:
-        if self.config.get(section, name).strip() in ['1', 1]:
+        if int(config.get('general', 'auto_exit'))==1:
             auto_exit = True
         else:
             auto_exit = False
