@@ -8,23 +8,25 @@
 * [NoGR](https://github.com/williamgateszhao/kindlereader/tree/NoGR) 分支为单用户版(基于python), 不依赖于Google Reader的API，从config.ini文件读取Feed地址并获取数据，运行于 Linux, Mac OSX, Windows
 
 
-## 单用户版/NoGR版使用说明
+## 使用说明
 
+* 详细使用说明请看[这里](http://blog.williamgates.net/2013/04/kindle-reader-without-google-reader/)
+
+## 简要使用说明（Master/NoGR分支）
 * 安装 Python (建议版本2.7), 大多Liunx和OSX已内置Python
-* (NoGR版本特有）安装 Python 的 feedparser 库，对于 Ubuntu 来说是 python-feedparser 软件包
+* (NoGR版本特有）安装 Python 的 feedparser 库
 * 修改 config.sample.ini 为 config.ini 并按说明修改其中内容
 * 下载并拷贝 kindlegen 到 kindlereader.py 所在目录，并添加可执行权限
 * 在终端或命令符内运行 ```python kindlereader.py```
-* Windows用户可以安装 py2exe 然执行 ```python build_exe.py``` 以生成 kindlereader.exe
 
-## 对Windows用户的特别说明
-* （Master/NoGR分支均可）kindlereader.exe 运行不需要安装 Python 环境, 将 kindlereader.exe 和 kindlegen.exe 及 config.ini 放在同一目录内，运行 kindlereader.exe 即可
+## 对Windows用户的特别说明（Master/NoGR分支）
+* kindlereader.exe 运行不需要安装 Python 环境, 将 kindlereader.exe 和 kindlegen.exe 及 config.ini 放在同一目录内，运行 kindlereader.exe 即可
 
 ## 参考
 
 * python: [http://www.python.org/](http://www.python.org/)
 * py2exe: [http://www.py2exe.org/](http://www.py2exe.org/)
-* Kindlegen下载地址: [http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000234621](http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000234621)
+* Kindlegen下载地址: [KindleGen](http://www.amazon.com/gp/feature.html?ie=UTF8&docId=1000765211)
 
 ## 许可
 
