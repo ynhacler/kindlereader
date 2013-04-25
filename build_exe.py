@@ -14,7 +14,7 @@ options = {"py2exe":
           }
 setup(
     version = __version__,
-    description = "Push google reader to your kindle",
+    description = "Push RSS to your kindle",
     name = "kindlereader",
     options = options,
     zipfile=None,
