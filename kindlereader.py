@@ -7,7 +7,7 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 
 __author__  = "Jiedan<lxb429@gmail.com>"
 __author__  = "williamgateszhao<williamgateszhao@gmail.com>"
-__version__ = "0.4.4"
+__version__ = "0.4.6"
 
 import sys
 import os
@@ -29,12 +29,10 @@ import getpass
 import subprocess
 import Queue,threading
 import feedparser
-##import sys
 
 work_dir = os.path.dirname(sys.argv[0])
 sys.path.append(os.path.join(work_dir, 'lib'))
 
-##from libgreader import *
 from tornado import template
 from tornado import escape
 from BeautifulSoup import BeautifulSoup
@@ -248,7 +246,7 @@ TEMPLATES['content.opf']= """<?xml version="1.0" encoding="utf-8"?>
     <dc:date>{{ datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ") }}</dc:date>
     <dc:description></dc:description>
 </dc-metadata>
-{% if format == 1 %}
+{% if format == 'periodical' %}
 <x-metadata>
     <output encoding="utf-8" content-type="application/x-mobipocket-subscription-magazine"></output>
     </output>
@@ -297,12 +295,18 @@ class ImageDownloader(threading.Thread):
     def run(self):
         while True:
             i=q.get()
-            logging.info("download: %s" % i['url'])
             try:
-                urllib.urlretrieve(i['url'],i['filename'])
+                qurl = i['url'].encode('utf-8')
+                opener = urllib2.build_opener()
+                response = opener.open(qurl)
+                img = open(i['filename'], 'wb' )
+                img.write(response.read())
+                img.close()
+                logging.info("download: %s" % i['url'])
+            except urllib2.HTTPError as http_err:
+                logging.info("HttpError: %s" % http_err)
             except Exception,e:
                 logging.error("Failed: %s" % e)
-                # q.put(i)
                 
             q.task_done()
 
@@ -434,19 +438,16 @@ class KindleReader(object):
         mobi8_file = os.path.join(data_dir, mobi8_file)
         ##kindlestrip处理过的mobi，只含v7格式
         mobi7_file = os.path.join(data_dir, mobi7_file)
+        ##调用kindlestrip处理mobi
         try:
             data_file = file(mobi8_file, 'rb').read()
             strippedFile = SectionStripper(data_file)
             file(mobi7_file, 'wb').write(strippedFile.getResult())
-            ##print "Header Bytes: " + binascii.b2a_hex(strippedFile.getHeader())
-            ##if len(sys.argv)==4:
-            ##    file(sys.argv[3], 'wb').write(strippedFile.getStrippedData())
             mobi_file = mobi7_file
         except Exception, e:
             mobi_file = mobi8_file
             logging.error("Error: %s" % e)
         
-        ##mobi_file = os.path.join(data_dir, mobi7_file)
         if os.path.isfile(mobi_file) is False:
             logging.error("failed!")
             return None
@@ -475,19 +476,17 @@ class KindleReader(object):
         for img in list(soup.findAll('img')):
             if (self.max_image_number >= 0  and img_count >= self.max_image_number) \
                 or img.has_key('src') is False :
-                ##or img['src'].startswith("http://union.vancl.com/") \
-                ##or img['src'].startswith("http://www1.feedsky.com/") \
-                ##or img['src'].startswith("http://feed.feedsky.com/~flare/"):
                 img.extract()
             else:
                 try:
                     localimage, fullname = self.parse_image(img['src'], ref)
-                    
                     if os.path.isfile(fullname) is False:
-                        images.append({
-                            'url':img['src'],
-                            'filename':fullname
-                        })
+                        ##确定结尾为图片后缀，防止下载非图片文件（如用于访问分析的假图片）
+                        if img['src'].encode('utf-8').lower().endswith(('jpg','jpeg','gif','png')):
+                            images.append({
+                                'url':img['src'],
+                                'filename':fullname
+                                })
 
                     if localimage:
                         img['src'] = localimage
@@ -535,12 +534,14 @@ class KindleReader(object):
         return localimage, fullname
 
     def main(self):
+        ##读取配置
         user = self.get_config('reader', 'username')
         max_items_number = self.get_config('reader', 'max_items_number')
         mark_read = self.get_config('reader', 'mark_read')
         exclude_read = self.get_config('reader', 'exclude_read')
         max_image_per_article = self.get_config('reader', 'max_image_per_article')
         max_old_date=self.get_config('reader', 'max_old_date')
+        timezone=self.get_config('general', 'timezone')
         
         try: 
             max_image_per_article = int(max_image_per_article)
@@ -551,13 +552,14 @@ class KindleReader(object):
         if max_items_number and max_items_number.isdigit():
             max_items_number = int(max_items_number)
         else:
-            max_items_number = 50
+            max_items_number = 10
             
         if max_old_date and max_old_date.isdigit():
             max_old_date = timedelta(int(max_old_date))
         else:
             max_old_date = timedelta(5)
-            
+        
+        ##从配置文件读取feed地址    
         feeds = []
         feeds_options = self.config.options("feeds")
         for feeds_option in feeds_options:
@@ -571,7 +573,7 @@ class KindleReader(object):
         
         for feed in feeds:
             logging.info("[%s/%s]:%s" % (feed_idx, feed_num,feed))
-
+            ##访问feed，自动尝试在地址结尾加上或去掉'/'
             try:
                 feed_data = feedparser.parse(feed)
                 if (not 'title' in feed_data.feed) and (feed.endswith('/')):
@@ -585,7 +587,7 @@ class KindleReader(object):
             except Exception, e:
                 logging.error("fail: %s" % e)
                 continue
-                    
+            ##读取feed内容        
             try:
                 local = {
                          'idx': feed_idx,
@@ -601,14 +603,23 @@ class KindleReader(object):
                     if item_idx > max_items_number:
                         break
                     published_datetime=datetime(*entry.published_parsed[0:6])
+                    
+                    try:
+                        local_author = entry.author
+                    except:
+                        local_author = "null"
+                        
                     local_entry = {
                                     'idx': item_idx,
                                     'title': entry.title,
                                     'published':published_datetime.strftime("%Y-%m-%d %H:%M:%S"),
                                     'url':entry.link,
-                                    'author':entry.author,
+                                    'author':local_author,
                         }
-                    local_entry['content'], images = self.parse_summary(entry.content[0].value, entry.link)
+                    try:
+                        local_entry['content'], images = self.parse_summary(entry.content[0].value, entry.link)
+                    except:
+                        local_entry['content'], images = self.parse_summary(entry.summary, entry.link)
                     local['entries'].append(local_entry)
                     downing_images += images
                     item_idx += 1
@@ -636,7 +647,6 @@ class KindleReader(object):
                 t.start()
             q.join()
         
-        ##if updated_items > 0:
         if len(updated_feeds)>0:
             mail_enable = self.get_config('mail', 'mail_enable')
             kindle_format = self.get_config('general', 'kindle_format')
