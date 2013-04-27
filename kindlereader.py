@@ -7,7 +7,7 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 
 __author__  = "Jiedan<lxb429@gmail.com>"
 __author__  = "williamgateszhao<williamgateszhao@gmail.com>"
-__version__ = "0.4.6"
+__version__ = "0.4.8"
 
 import sys
 import os
@@ -28,7 +28,7 @@ import ConfigParser
 import getpass
 import subprocess
 import Queue,threading
-import feedparser
+##import feedparser
 
 work_dir = os.path.dirname(sys.argv[0])
 sys.path.append(os.path.join(work_dir, 'lib'))
@@ -37,6 +37,7 @@ from tornado import template
 from tornado import escape
 from BeautifulSoup import BeautifulSoup
 from kindlestrip import *
+import feedparser
 
 import socket, urllib2, urllib
 socket.setdefaulttimeout(20)
@@ -295,20 +296,34 @@ class ImageDownloader(threading.Thread):
     def run(self):
         while True:
             i=q.get()
+            self.getimage(i)
+            
+            q.task_done()
+            
+    def getimage(self,i,retires=1):
             try:
-                qurl = i['url'].encode('utf-8')
+                header = {
+                        'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6',
+                        'Referer':i['referer']
+                        }
+                req = urllib2.Request(
+                        url = i['url'].encode('utf-8'),
+                        headers = header
+                        )
                 opener = urllib2.build_opener()
-                response = opener.open(qurl)
+                response = opener.open(req,timeout=30)
                 img = open(i['filename'], 'wb' )
                 img.write(response.read())
                 img.close()
                 logging.info("download: %s" % i['url'])
             except urllib2.HTTPError as http_err:
+                if retires > 0:
+                    return self.getimage(i, retires-1)
                 logging.info("HttpError: %s" % http_err)
             except Exception,e:
+                if retires > 0:
+                    return self.getimage(i, retires-1)
                 logging.error("Failed: %s" % e)
-                
-            q.task_done()
 
 class KindleReader(object):
     """docstring for KindleReader"""
@@ -429,21 +444,21 @@ class KindleReader(object):
             fp.close()
 
         mobi8_file = "KindleReader8-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
-        mobi7_file = "KindleReader-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
+        mobi6_file = "KindleReader-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
         opf_file = os.path.join(data_dir, "content.opf")
         subprocess.call('%s %s -o "%s" > log.txt' %
                 (kindlegen, opf_file, mobi8_file), shell=True)
         
-        ##kindlegen生成的mobi，含有7/8两种格式
+        ##kindlegen生成的mobi，含有v6/v8两种格式
         mobi8_file = os.path.join(data_dir, mobi8_file)
-        ##kindlestrip处理过的mobi，只含v7格式
-        mobi7_file = os.path.join(data_dir, mobi7_file)
+        ##kindlestrip处理过的mobi，只含v6格式
+        mobi6_file = os.path.join(data_dir, mobi6_file)
         ##调用kindlestrip处理mobi
         try:
             data_file = file(mobi8_file, 'rb').read()
             strippedFile = SectionStripper(data_file)
-            file(mobi7_file, 'wb').write(strippedFile.getResult())
-            mobi_file = mobi7_file
+            file(mobi6_file, 'wb').write(strippedFile.getResult())
+            mobi_file = mobi6_file
         except Exception, e:
             mobi_file = mobi8_file
             logging.error("Error: %s" % e)
@@ -479,18 +494,20 @@ class KindleReader(object):
                 img.extract()
             else:
                 try:
-                    localimage, fullname = self.parse_image(img['src'], ref)
-                    if os.path.isfile(fullname) is False:
-                        ##确定结尾为图片后缀，防止下载非图片文件（如用于访问分析的假图片）
-                        if img['src'].encode('utf-8').lower().endswith(('jpg','jpeg','gif','png')):
+                    localimage, fullname = self.parse_image(img['src'])
+                    ##确定结尾为图片后缀，防止下载非图片文件（如用于访问分析的假图片）
+                    if img['src'].encode('utf-8').lower().endswith(('jpg','jpeg','gif','png','bmp')):
+                        if os.path.isfile(fullname) is False:
                             images.append({
                                 'url':img['src'],
-                                'filename':fullname
+                                'filename':fullname,
+                                'referer':ref
                                 })
-
-                    if localimage:
-                        img['src'] = localimage
-                        img_count = img_count + 1
+                        if localimage:
+                            img['src'] = localimage
+                            img_count = img_count + 1
+                        else:
+                            img.extract()
                     else:
                         img.extract()
                 except Exception, e:
@@ -499,7 +516,7 @@ class KindleReader(object):
 
         return soup.renderContents('utf-8'), images
 
-    def parse_image(self, url, referer=None, filename=None):
+    def parse_image(self, url, filename=None):
         """download image"""
         url = escape.utf8(url)
         image_guid = hashlib.sha1(url).hexdigest()
@@ -532,6 +549,35 @@ class KindleReader(object):
         
         localimage = 'images/%s/%s' % (hash_dir, filename)
         return localimage, fullname
+    
+    def parsefeed(self,feed,retires=1):
+        """parsefeed using feedparser"""
+        ##访问feed，自动尝试在地址结尾加上或去掉'/'
+        try:
+            feed_data = feedparser.parse(feed)
+            ok=0
+            if (not 'title' in feed_data.feed) and (feed.endswith('/')):
+                feed_data = feedparser.parse(feed[0:-1])
+                if not 'title' in feed_data.feed:
+                    raise UserWarning("read error")
+                else:
+                    ok = 1
+            elif (not 'title' in feed_data.feed) and (not feed.endswith('/')):
+                feed_data = feedparser.parse(feed+'/')
+                if not 'title' in feed_data.feed:
+                    raise UserWarning("read error")
+                else:
+                    ok = 1
+            else:
+                ok = 1
+        except Exception, e:
+            if retires > 0:
+                logging.error("error: %s , retry" % e)
+                ##如果读取错误，重试一次
+                return self.parsefeed(feed, retires-1)
+            else:
+                logging.error("fail: %s" % e)
+        return ok,feed_data
 
     def main(self):
         ##读取配置
@@ -575,18 +621,13 @@ class KindleReader(object):
             logging.info("[%s/%s]:%s" % (feed_idx, feed_num,feed))
             ##访问feed，自动尝试在地址结尾加上或去掉'/'
             try:
-                feed_data = feedparser.parse(feed)
-                if (not 'title' in feed_data.feed) and (feed.endswith('/')):
-                    feed_data = feedparser.parse(feed[0:-1])
-                    if not 'title' in feed_data.feed:
-                        continue
-                elif (not 'title' in feed_data.feed) and (not feed.endswith('/')):
-                    feed_data = feedparser.parse(feed+'/')
-                    if not 'title' in feed_data.feed:
-                        continue
+                ok,feed_data = self.parsefeed(feed)
+                if ok == 0:
+                    raise UserWarning("illegal feed")
             except Exception, e:
                 logging.error("fail: %s" % e)
                 continue
+                
             ##读取feed内容        
             try:
                 local = {
@@ -598,11 +639,16 @@ class KindleReader(object):
                 item_idx = 1
                 datetoday=date.today()
                 for entry in feed_data.entries:
-                    if date.today() - date(*entry.published_parsed[0:3]) > max_old_date:
-                        continue
+                    try:
+                        if date.today() - date(*entry.published_parsed[0:3]) > max_old_date:
+                            continue
+                        else:
+                            published_datetime=datetime(*entry.published_parsed[0:6])
+                    except:
+                        published_datetime=datetime.today()
+
                     if item_idx > max_items_number:
                         break
-                    published_datetime=datetime(*entry.published_parsed[0:6])
                     
                     try:
                         local_author = entry.author
