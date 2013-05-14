@@ -24,8 +24,7 @@
 ## 对Windows用户的特别说明（Master/GR分支）
 * kindlereader.exe 运行不需要安装 Python 环境, 将 kindlereader.exe 和 kindlegen.exe 及 config.ini 放在同一目录内，运行 kindlereader.exe 即可
 * 暂时仅测试了Win7平台，不能保证支持WinXP及更早版本
-* WinXP用户可选择：安装[Microsoft Visual C++ 2008 Redistributable Package](http://www.microsoft.com/en-us/download/details.aspx?id=29)
-* WinXP用户也可选择：保留Microsoft.VC90.CRT.manifest文件，并下载[msvcr90.dll](http://www.dll-files.com/msvcr90%7Ce7d91d008fe76423962b91c43c88e4eb.zip?0WIjXDUMiV)，解压后放于kindlereader.py同一目录中
+* WinXP用户必须安装[Microsoft Visual C++ 2008 Redistributable Package](http://www.microsoft.com/en-us/download/details.aspx?id=29)
 
 ## 参考
 
@@ -41,6 +40,9 @@ Kindlereader is Licensed under the MIT license: [http://www.opensource.org/licen
 
 ## Master分支改为不依赖Google Reader（即原来的NoGR分支）以来更新历史
 
+* 0.6.1 修复一些问题；尝试处理一些不合规范的时间信息；在所有文章信息中均使用utc时间
+* 0.6.0 对feed读取也采取了多线程，大幅度提高速度；重构代码，为开发多用户版做准备
+* 0.4.9 增加强制全文输出的功能，使用[fivefilters.org](http://fivefilters.org/)，为了避开该站点免费用户每次只能输出3篇文章的限制，尝试将每篇文章单独发给该站点进行解析
 * 0.4.8 不再需要安装feedparser库，Python 2.7环境可以直接使用本程序
 * 0.4.7 优化feed读取和图片下载流程，下载失败自动进行重试；修复了对不提供发布时间的RSS格式支持
 * 0.4.6 修复了对图片URL中含有非ASCII字符的支持，并加强了下载图片的效率和适应性

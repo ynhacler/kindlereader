@@ -87,7 +87,7 @@ import logging
 import os.path
 import re
 
-from tornado import escape
+from lib.tornado import escape  # mod by WG
 
 class Template(object):
     """A compiled template.
@@ -95,8 +95,8 @@ class Template(object):
     We compile into Python from the given template_string. You can generate
     the template from variables with generate().
     """
-    def __init__(self, template_string, name="<string>", loader=None,
-                 compress_whitespace=None):
+    def __init__(self, template_string, name = "<string>", loader = None,
+                 compress_whitespace = None):
         self.name = name
         if compress_whitespace is None:
             compress_whitespace = name.endswith(".html") or \
@@ -174,7 +174,7 @@ class Loader(object):
     def reset(self):
         self.templates = {}
 
-    def resolve_path(self, name, parent_path=None):
+    def resolve_path(self, name, parent_path = None):
         if parent_path and not parent_path.startswith("<") and \
            not parent_path.startswith("/") and \
            not name.startswith("/"):
@@ -185,12 +185,12 @@ class Loader(object):
                 name = relative_path[len(self.root) + 1:]
         return name
 
-    def load(self, name, parent_path=None):
-        name = self.resolve_path(name, parent_path=parent_path)
+    def load(self, name, parent_path = None):
+        name = self.resolve_path(name, parent_path = parent_path)
         if name not in self.templates:
             path = os.path.join(self.root, name)
             f = open(path, "r")
-            self.templates[name] = Template(f.read(), name=name, loader=self)
+            self.templates[name] = Template(f.read(), name = name, loader = self)
             f.close()
         return self.templates[name]
 
@@ -236,7 +236,7 @@ class _ChunkList(_Node):
 
 
 class _NamedBlock(_Node):
-    def __init__(self, name, body=None):
+    def __init__(self, name, body = None):
         self.name = name
         self.body = body
 
@@ -274,7 +274,7 @@ class _IncludeBlock(_Node):
 
 
 class _ApplyBlock(_Node):
-    def __init__(self, method, body=None):
+    def __init__(self, method, body = None):
         self.method = method
         self.body = body
 
@@ -294,7 +294,7 @@ class _ApplyBlock(_Node):
 
 
 class _ControlBlock(_Node):
-    def __init__(self, statement, body=None):
+    def __init__(self, statement, body = None):
         self.statement = statement
         self.body = body
 
@@ -383,7 +383,7 @@ class _CodeWriter(object):
         assert self._indent > 0
         self._indent -= 1
 
-    def write_line(self, line, indent=None):
+    def write_line(self, line, indent = None):
         if indent == None:
             indent = self._indent
         for i in xrange(indent):
@@ -398,7 +398,7 @@ class _TemplateReader(object):
         self.line = 0
         self.pos = 0
 
-    def find(self, needle, start=0, end=None):
+    def find(self, needle, start = 0, end = None):
         assert start >= 0, start
         pos = self.pos
         start += pos
@@ -412,7 +412,7 @@ class _TemplateReader(object):
             index -= pos
         return index
 
-    def consume(self, count=None):
+    def consume(self, count = None):
         if count is None:
             count = len(self.text) - self.pos
         newpos = self.pos + count
@@ -450,7 +450,7 @@ def _format_code(code):
     return "".join([format % (i + 1, line) for (i, line) in enumerate(lines)])
 
 
-def _parse(reader, in_block=None):
+def _parse(reader, in_block = None):
     body = _ChunkList([])
     while True:
         # Find next template directive
@@ -460,7 +460,7 @@ def _parse(reader, in_block=None):
             if curly == -1 or curly + 1 == reader.remaining():
                 # EOF
                 if in_block:
-                    raise ParseError("Missing {%% end %%} block for %s" %
+                    raise ParseError("Missing {%% end %%} block for %s" % 
                                      in_block)
                 body.chunks.append(_Text(reader.consume()))
                 return body
@@ -520,7 +520,7 @@ def _parse(reader, in_block=None):
         allowed_parents = intermediate_blocks.get(operator)
         if allowed_parents is not None:
             if not in_block:
-                raise ParseError("%s outside %s block" %
+                raise ParseError("%s outside %s block" % 
                             (operator, allowed_parents))
             if in_block not in allowed_parents:
                 raise ParseError("%s block cannot be attached to %s block" % (operator, in_block))
