@@ -2,7 +2,7 @@
 
 一个定时将RSS/ATOM feed发送至kindle的工具
 
-其中master分支自改为不再依赖Google Reader以来，由[WilliamGates](https://github.com/williamgateszhao)协助开发
+其中master分支自改为不再依赖Google Reader以来，由[WilliamGates](https://github.com/williamgateszhao)开发
 
 **2013年7月1日Google Reader关闭服务之后GR和gae分支版本将无法使用**
 
@@ -40,6 +40,8 @@ Kindlereader is Licensed under the MIT license: [http://www.opensource.org/licen
 
 ## Master分支改为不依赖Google Reader（即原来的NoGR分支）以来更新历史
 
+* 0.6.3 新增时区选项，所有可见的日期显示均根据用户选择的时区（默认为+8）；新增灰度图选项，在生成mobi前将图片转为灰度图，减小文件体积（默认关闭）；允许用户选择是否启用kindlestrip
+* 0.6.2 修改mobi文件标题，现在periodical格式在原生系统能自动归档了（但两个文件为同一天的，会将较新的文件归档，目前无法解决）
 * 0.6.1 修复一些问题；尝试处理一些不合规范的时间信息；在所有文章信息中均使用utc时间
 * 0.6.0 对feed读取也采取了多线程，大幅度提高速度；重构代码，为开发多用户版做准备
 * 0.4.9 增加强制全文输出的功能，使用[fivefilters.org](http://fivefilters.org/)，为了避开该站点免费用户每次只能输出3篇文章的限制，尝试将每篇文章单独发给该站点进行解析

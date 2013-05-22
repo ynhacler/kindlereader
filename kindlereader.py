@@ -6,7 +6,7 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 """
 
 __author__ = ["Jiedan<lxb429@gmail.com>", "williamgateszhao<williamgateszhao@gmail.com>"]
-__version__ = "0.6.1"
+__version__ = "0.6.3"
 
 import sys
 import os
@@ -33,6 +33,10 @@ from lib.tornado import template
 from lib.BeautifulSoup import BeautifulSoup
 from lib.kindlestrip import SectionStripper
 from lib import feedparser
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 iswindows = 'win32' in sys.platform.lower() or 'win64' in sys.platform.lower()
 isosx = 'darwin' in sys.platform.lower()
@@ -105,7 +109,7 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
     <div id="cover">
         <h1 id="title">{{ user }}'s kindle reader</h1>
         <a href="#content">Go straight to first item</a><br />
-        {{ datetime.datetime.now().strftime("%m/%d %H:%M") }}
+        {{ mobitime.strftime("%m/%d %H:%M") }}
     </div>
     <div id="toc">
         <h2>Feeds:</h2> 
@@ -244,7 +248,11 @@ TEMPLATES['content.opf'] = """<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="2.0" unique-identifier="uid">
 <metadata>
 <dc-metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:title>{{ user }}'s kindle reader({{ datetime.datetime.now().strftime("%m/%d %H:%M") }})</dc:title>
+    {% if format == 'periodical' %}
+    <dc:title>{{ user }}'s kindle reader</dc:title>
+    {% else %}
+    <dc:title>{{ user }}'s kindle reader({{ mobitime.strftime("%m/%d %H:%M") }})</dc:title>
+    {% end %}
     <dc:language>zh-CN</dc:language>
     <dc:identifier id="uid">{{ user }}{{ datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ") }}</dc:identifier>
     <dc:creator>kindlereader</dc:creator>
@@ -287,7 +295,12 @@ class KRConfig():
         except:
             config.readfp(codecs.open(configfile, "r", "utf-8"))
         
+        self.auto_exit = self.getauto_exit(config)
+        self.thread_numbers = self.getthread_numbers(config)
         self.kindle_format = self.getkindle_format(config)
+        self.timezone = self.gettimezone(config)
+        self.grayscale = self.getgrayscale(config)
+        self.kindlestrip = self.getkindlestrip(config)
         self.mail_enable = self.getmail_enable(config)
         self.mail_host = self.getmail_host(config)
         self.mail_port = self.getmail_port(config)
@@ -296,16 +309,27 @@ class KRConfig():
         self.mail_to = self.getmail_to(config)
         self.mail_username = self.getmail_username(config)
         self.mail_password = self.getmail_password(config)
+        self.mail_overlay = self.getmail_overlay(config)
         self.user = self.getuser(config)
         self.max_items_number = self.getmax_items_number(config)
         self.max_image_per_article = self.getmax_image_per_article(config)
         self.max_old_date = self.getmax_old_date(config)
-        self.auto_exit = self.getauto_exit(config)
-        self.thread_numbers = self.getthread_numbers(config)
         self.feeds = self.getfeeds(config)
         self.kindlegen = self.find_kindlegen_prog()
         self.work_dir = self.getwork_dir()
-  
+
+    def getauto_exit(self, config = None):
+        try:
+            return int(config.get('general', 'auto_exit').strip())
+        except:
+            return 1
+        
+    def getthread_numbers(self, config = None):
+        try:
+            return int(config.get('general', 'thread_numbers').strip())
+        except:
+            return 5
+        
     def getkindle_format(self, config = None):
         try:
             format = str(config.get('general', 'kindle_format').strip())
@@ -315,7 +339,25 @@ class KRConfig():
                 return 'book'
         except:
             return 'book'
-     
+        
+    def gettimezone(self, config = None):
+        try:
+            return timedelta(hours = (int(config.get('general', 'timezone').strip())))
+        except:
+            return timedelta(hours = 8)
+        
+    def getgrayscale(self, config = None):
+        try:
+            return int(config.get('general', 'grayscale').strip())
+        except:
+            return 0
+
+    def getkindlestrip(self, config = None):
+        try:
+            return int(config.get('general', 'kindlestrip').strip())
+        except:
+            return 1
+        
     def getmail_host(self, config = None):
         try:
             return str(config.get('mail', 'host').strip())
@@ -364,6 +406,12 @@ class KRConfig():
         except:
             return 0
         
+    def getmail_overlay(self, config = None):
+        try:
+            return int(config.get('mail', 'overlay').strip())
+        except:
+            return 0
+        
     def getuser(self, config = None):
         try:
             return str(config.get('reader', 'username').strip())
@@ -387,18 +435,6 @@ class KRConfig():
             return timedelta(int(config.get('reader', 'max_old_date').strip()))
         except:
             return timedelta(3)
-    
-    def getauto_exit(self, config = None):
-        try:
-            return int(config.get('general', 'auto_exit').strip())
-        except:
-            return 1
-        
-    def getthread_numbers(self, config = None):
-        try:
-            return int(config.get('general', 'thread_numbers').strip())
-        except:
-            return 5
 
     def getfeeds(self, config = None):
         try:
@@ -533,7 +569,7 @@ class feedDownloader(threading.Thread):
                 local_entry = {
                                'idx': item_idx,
                                'title': entry.title,
-                               'published':published_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                               'published':(published_datetime + krconfig.timezone).strftime("%Y-%m-%d %H:%M:%S"),
                                'url':entry.link,
                                'author':local_author,
                             }
@@ -566,12 +602,19 @@ class feedDownloader(threading.Thread):
     def parsetime(self, strdatetime):
         '''尝试处理feedparser未能识别的时间格式'''
         try:
-            # 目前仅针对Mon,13 May 2013 06:48:25 GMT+8这样的奇葩格式
-            if strdatetime[-5:-1] == 'GMT+':
+            # 针对Mon,13 May 2013 06:48:25 GMT+8这样的奇葩格式
+            if strdatetime[-5:-2] == 'GMT':
                 t = datetime.strptime(strdatetime[:-6], '%a,%d %b %Y %H:%M:%S')
-                return t - timedelta(hours = int(strdatetime[-1]))
+                return (t - timedelta(hours = int(strdatetime[-2:-1])) + krconfig.timezone)
+            # feedparser对非utc时间的支持有问题（Wes, 22 May 2013 13:54:00 +0800这样的）
+            elif (strdatetime[-5:-3] == '+0' or strdatetime[-5:-3] == '-0') and strdatetime[-2:] == '00':
+                a = parsedate_tz(strdatetime)
+                t = datetime(*a[:6]) - timedelta(seconds = a[-1])
+                return (t + krconfig.timezone)
+            else:
+                return (datetime.utcnow() + krconfig.timezone)
         except Exception, e:
-            return datetime.utcnow()
+            return (datetime.utcnow() + krconfig.timezone)
             
     def force_full_text(self, url):
         '''当需要强制全文输出时，将每个entry单独发给fivefilters'''
@@ -690,6 +733,13 @@ class ImageDownloader(threading.Thread):
             response = opener.open(req, timeout = 30)
             with open(i['filename'], 'wb') as img:
                 img.write(response.read())
+            if Image and krconfig.grayscale == 1:
+                try:
+                    img = Image.open(i['filename'])
+                    new_img = img.convert("L")
+                    new_img.save(i['filename'])
+                except:
+                    pass
             logging.info("download: {}".format(i['url'].encode('utf-8')))
         except urllib2.HTTPError as http_err:
             if retires > 0:
@@ -735,7 +785,7 @@ class KindleReader(object):
     
         att = MIMEText(data, 'base64', 'utf-8')
         att["Content-Type"] = 'application/octet-stream'
-        att["Content-Disposition"] = 'attachment; filename="kindle-reader-%s.mobi"' % time.strftime('%Y%m%d-%H%M%S')
+        att["Content-Disposition"] = 'attachment; filename="kindle-reader-%s.mobi"' % (datetime.utcnow() + krconfig.timezone).strftime('%Y%m%d-%H%M%S')
         msg.attach(att)
 
         try:
@@ -772,14 +822,15 @@ class KindleReader(object):
                 user = user,
                 feeds = feeds,
                 uuid = uuid.uuid1(),
-                format = format
+                format = format,
+                mobitime = datetime.utcnow() + krconfig.timezone
             )
             
             with open(os.path.join(data_dir, tpl), 'wb') as fp:
                 fp.write(content)
 
-        mobi8_file = "KindleReader8-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
-        mobi6_file = "KindleReader-%s.mobi" % time.strftime('%Y%m%d-%H%M%S')
+        mobi8_file = "KindleReader8-%s.mobi" % (datetime.utcnow() + krconfig.timezone).strftime('%Y%m%d-%H%M%S')
+        mobi6_file = "KindleReader-%s.mobi" % (datetime.utcnow() + krconfig.timezone).strftime('%Y%m%d-%H%M%S')
         opf_file = os.path.join(data_dir, "content.opf")
         subprocess.call('%s %s -o "%s" > log.txt' % 
                 (krconfig.kindlegen, opf_file, mobi8_file), shell = True)
@@ -788,15 +839,18 @@ class KindleReader(object):
         mobi8_file = os.path.join(data_dir, mobi8_file)
         # kindlestrip处理过的mobi，只含v6格式
         mobi6_file = os.path.join(data_dir, mobi6_file)
-        # 调用kindlestrip处理mobi
-        try:
-            data_file = file(mobi8_file, 'rb').read()
-            strippedFile = SectionStripper(data_file)
-            file(mobi6_file, 'wb').write(strippedFile.getResult())
-            mobi_file = mobi6_file
-        except Exception, e:
+        if krconfig.kindlestrip == 1:
+            # 调用kindlestrip处理mobi
+            try:
+                data_file = file(mobi8_file, 'rb').read()
+                strippedFile = SectionStripper(data_file)
+                file(mobi6_file, 'wb').write(strippedFile.getResult())
+                mobi_file = mobi6_file
+            except Exception, e:
+                mobi_file = mobi8_file
+                logging.error("Error: %s" % e)
+        else:
             mobi_file = mobi8_file
-            logging.error("Error: %s" % e)
             
         if os.path.isfile(mobi_file) is False:
             logging.error("failed!")
