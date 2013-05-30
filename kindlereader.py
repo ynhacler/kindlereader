@@ -214,7 +214,7 @@ TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
             <navPoint class="article" id="{{ feed_idx }}_{{ item['idx'] }}" playOrder="{{ item['idx'] }}">
               <navLabel><text>{{ escape(item['title']) }}</text></navLabel>
               <content src="content.html#article_{{ feed_idx }}_{{ item['idx'] }}" />
-              <mbp:meta name="description">{{ escape(item['content'][:200]) }}</mbp:meta>
+              <mbp:meta name="description">{{ item['stripped'] }}</mbp:meta>
               <mbp:meta name="author">{% if item['author'] %}{{ item['author'] }}{% end %}</mbp:meta>
             </navPoint>
             {% end %}
@@ -581,7 +581,9 @@ class feedDownloader(threading.Thread):
                         local_entry['content'], images = self.parse_summary(entry.content[0].value, entry.link)
                     except:
                         local_entry['content'], images = self.parse_summary(entry.summary, entry.link)
-                            
+
+                local_entry['stripped'] = ''.join(BeautifulSoup(local_entry['content'], convertEntities=BeautifulSoup.HTML_ENTITIES).findAll(text=True))[:200]
+
                 local['entries'].append(local_entry)
                 for i in images:
                     imgq.put(i)
