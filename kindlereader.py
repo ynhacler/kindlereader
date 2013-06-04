@@ -6,7 +6,7 @@ Created by Jiedan<lxb429@gmail.com> on 2010-11-08.
 """
 
 __author__ = ["Jiedan<lxb429@gmail.com>", "williamgateszhao<williamgateszhao@gmail.com>"]
-__version__ = "0.6.3"
+__version__ = "0.6.4"
 
 import sys
 import os
@@ -214,7 +214,7 @@ TEMPLATES['toc.ncx'] = """<?xml version="1.0" encoding="UTF-8"?>
             <navPoint class="article" id="{{ feed_idx }}_{{ item['idx'] }}" playOrder="{{ item['idx'] }}">
               <navLabel><text>{{ escape(item['title']) }}</text></navLabel>
               <content src="content.html#article_{{ feed_idx }}_{{ item['idx'] }}" />
-              <mbp:meta name="description">{{ escape(item['content'][:200]) }}</mbp:meta>
+              <mbp:meta name="description">{{ escape(item['stripped']) }}</mbp:meta>
               <mbp:meta name="author">{% if item['author'] %}{{ item['author'] }}{% end %}</mbp:meta>
             </navPoint>
             {% end %}
@@ -464,7 +464,7 @@ class KRConfig():
     
     def getwork_dir(self):
         try:
-            return os.path.dirname(sys.argv[0])
+            return os.path.abspath(os.path.dirname(sys.argv[0]))
         except:
             return None
 
@@ -476,7 +476,6 @@ class feedDownloader(threading.Thread):
     
     def __init__(self, threadname):
         threading.Thread.__init__(self, name = threadname)
-        self.work_dir = os.path.dirname(sys.argv[0])
         
     def run(self):
         global feedq
@@ -581,6 +580,8 @@ class feedDownloader(threading.Thread):
                         local_entry['content'], images = self.parse_summary(entry.content[0].value, entry.link)
                     except:
                         local_entry['content'], images = self.parse_summary(entry.summary, entry.link)
+
+                local_entry['stripped'] = ''.join(BeautifulSoup(local_entry['content'], convertEntities = BeautifulSoup.HTML_ENTITIES).findAll(text = True))[:200]
                             
                 local['entries'].append(local_entry)
                 for i in images:
@@ -698,7 +699,7 @@ class feedDownloader(threading.Thread):
         hash_dir = os.path.join(h[0:1], h[1:2])
         filename = image_guid + '.' + ext
 
-        img_dir = os.path.join(self.work_dir, 'data', 'images', hash_dir)
+        img_dir = os.path.join(krconfig.work_dir, 'data', 'images', hash_dir)
         fullname = os.path.join(img_dir, filename)
         
         if not os.path.exists(img_dir):
@@ -906,7 +907,7 @@ if __name__ == '__main__':
         datefmt = '%m-%d %H:%M')
     
     try:
-        work_dir = os.path.dirname(sys.argv[0])
+        work_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
         krconfig = KRConfig(configfile = os.path.join(work_dir, "config.ini"))
     except:
         logging.error("config file {} not found or format error".format(os.path.join(work_dir, "config.ini")))
