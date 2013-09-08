@@ -151,10 +151,12 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
             <h3>{{ feed['title'] }}</h3>
             <ol>
                 {% for item in feed['entries'] %}
-                <li>
-                  <a href="#article_{{ feed_idx }}_{{ item['idx'] }}">{{ item['title'] }}</a><br/>
-                  {% if item['published'] %}{{ item['published'] }}{% end %}
-                </li>
+                <div id="articleSignal_{{ feed_idx }}_{{ item['idx'] }}">
+               		 <li>
+              		    <a href="#article_{{ feed_idx }}_{{ item['idx'] }}">{{ item['title'] }}</a><br/>
+              		    {% if item['published'] %}{{ item['published'] }}{% end %}
+              		  </li>
+                </div>
                 {% end %}
             </ol>
         </div>
@@ -178,7 +180,9 @@ TEMPLATES['content.html'] = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
               {% end %}
             </h2>
             {% if item['published'] %}{{ item['published'] }}{% end %}
+            <a href="#articleSignal_{{ feed_idx }}_{{ item['idx'] }}">Return Feed</a>
             <div>{{ item['content'] }}</div>
+        	<a href="#articleSignal_{{ feed_idx }}_{{ item['idx'] }}">Return Feed</a>
         </div>
         {% end %}
         </div>
